@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASTRA-MED // Deep Space Astronaut Health Telemetry</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            space: {
+              950: '#040812',
+              900: '#091122',
+              850: '#0d182e',
+              800: '#13223f',
+              700: '#1d335c',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom subtle scrollbars and ambient grid background */
+    body {
+      background-color: #040812;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+        linear-gradient(to right, rgba(30, 41, 59, 0.25) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(30, 41, 59, 0.25) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #091122;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1d335c;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #06b6d4;
+    }
+
+    @keyframes pulseRing {
+      0% { transform: scale(0.9); opacity: 0.9; }
+      70% { transform: scale(1.8); opacity: 0; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .sensor-pulse {
+      transform-origin: center;
+      transform-box: fill-box;
+      animation: pulseRing 2.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+
+    @keyframes alertFlash {
+      0%, 100% { border-color: rgba(244, 63, 94, 0.85); box-shadow: 0 0 20px rgba(244, 63, 94, 0.2); }
+      50% { border-color: rgba(244, 63, 94, 0.25); box-shadow: 0 0 4px rgba(244, 63, 94, 0.05); }
+    }
+    .alert-border-pulse {
+      animation: alertFlash 1.5s infinite ease-in-out;
+    }
+
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .float-slow {
+      animation: floatSlow 5s ease-in-out infinite;
+    }
+
+    @keyframes orbitSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .orbit-spin {
+      transform-origin: 160px 160px;
+      animation: orbitSpin 28s linear infinite;
+    }
+  </style>
+</head>
+<body class="text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- TOP MISSION CONTROL HEADER -->
+  <header class="sticky top-0 z-30 bg-space-900/95 backdrop-blur-md border-b border-slate-800/90 px-4 lg:px-6 pt-3 pb-2.5">
+    <div class="max-w-[1600px] mx-auto space-y-2.5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      
+        <!-- Brand & Mission Identifier -->
+        <div class="flex items-center justify-between">
+          <button type="button" onclick="switchFrontendView('portal')" class="flex items-center gap-3 text-left group cursor-pointer">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-400/40 group-hover:border-cyan-300 flex items-center justify-center shadow-lg shadow-cyan-500/10 transition">
+              <i class="fa-solid fa-heart-pulse text-cyan-400 text-lg"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="font-bold tracking-wider text-base sm:text-lg text-white group-hover:text-cyan-200 transition">ASTRA-MED <span class="text-cyan-400 font-mono text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30">v4.2</span></h1>
+                <span class="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  DSN LINK ACTIVE
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 font-mono">ARTEMIS-IV // LUNAR GATEWAY &amp; DEEP SPACE HABITAT</p>
+            </div>
+          </button>
+
+          <!-- Mobile Quick Actions -->
+          <div class="flex items-center gap-2 lg:hidden">
+            <button onclick="toggleSecurityModal(true)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-emerald-300 text-xs font-mono font-medium flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-shield-halved text-emerald-400"></i> SDLS
+            </button>
+            <button onclick="switchFrontendView('mission-brief')" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-400/40 text-indigo-300 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-rocket"></i> Brief
+            </button>
+          </div>
+        </div>
+
+        <!-- Mission Telemetry Pill Bar & Controls -->
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono">
+          <div class="flex items-center gap-2 bg-space-850 border border-slate-800 rounded-xl px-3 py-1.5">
+            <span class="text-slate-400">MET:</span>
+            <span id="missionClock" class="text-cyan-300 font-semibold">142d 18h 42m 10s</span>
+          </div>
+          <div class="hidden sm:flex items-center gap-2 bg-space-850 border border-slate-800 rounded-xl px-3 py-1.5">
+            <span class="text-slate-400">ALT:</span>
+            <span class="text-slate-200 font-semibold">384,400 km (NRHO)</span>
+          </div>
+          <div class="hidden xl:flex items-center gap-2 bg-space-850 border border-slate-800 rounded-xl px-3 py-1.5">
+            <span class="text-slate-400">SIGNAL LATENCY:</span>
+            <span class="text-amber-300 font-semibold">1.28s OWLT</span>
+          </div>
+
+          <!-- Security & Crypto Status Badge/Button -->
+          <button onclick="toggleSecurityModal(true)" class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-xs font-semibold transition cursor-pointer shadow-sm shadow-emerald-500/10" title="Inspect End-to-End Telemetry Encryption & Privacy Architecture">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <i class="fa-solid fa-shield-halved text-emerald-400 text-[11px] relative"></i>
+            </span>
+            <span>AES-256-GCM / SDLS ACTIVE</span>
+          </button>
+
+          <!-- Stream Toggle Button -->
+          <button id="streamToggleBtn" onclick="toggleStream()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-sans font-medium flex items-center gap-2 transition cursor-pointer">
+            <i id="streamIcon" class="fa-solid fa-pause text-cyan-400"></i>
+            <span id="streamLabel">Live Stream</span>
+          </button>
+
+          <!-- Simulate Anomaly Button -->
+          <div class="relative">
+            <button id="anomalyBtn" onclick="triggerAnomaly()" class="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-sans font-semibold flex items-center gap-2 transition cursor-pointer shadow-sm shadow-rose-500/10">
+              <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
+              <span>Simulate Anomaly</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRONTEND MULTI-VIEW NAVIGATION BAR -->
+      <nav aria-label="Frontend Application Navigation" class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/80 overflow-x-auto">
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <button id="nav-portal" onclick="switchFrontendView('portal')" class="frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-cyan-500/15 text-cyan-300 border border-cyan-400/50">
+            <i class="fa-solid fa-earth-americas"></i>
+            <span>Mission Portal</span>
+          </button>
+          <button id="nav-dashboard" onclick="switchFrontendView('dashboard')" class="frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-space-850/80 text-slate-400 hover:text-slate-200 border border-slate-800">
+            <i class="fa-solid fa-heart-pulse"></i>
+            <span>Telemetry Console</span>
+          </button>
+          <button id="nav-crew-profiles" onclick="switchFrontendView('crew-profiles')" class="frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-space-850/80 text-slate-400 hover:text-slate-200 border border-slate-800">
+            <i class="fa-solid fa-user-astronaut"></i>
+            <span>Crew &amp; Medical Readiness</span>
+          </button>
+          <button id="nav-mission-brief" onclick="switchFrontendView('mission-brief')" class="frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-space-850/80 text-slate-400 hover:text-slate-200 border border-slate-800">
+            <i class="fa-solid fa-rocket"></i>
+            <span>2026 Space Apps &amp; Security</span>
+          </button>
+        </div>
+
+        <div class="hidden md:flex items-center gap-2 text-[11px] font-mono text-slate-400 shrink-0">
+          <span>ACTIVE CREW:</span>
+          <span id="navActiveCrewLabel" class="text-cyan-300 font-semibold">Cmdr. Elena Vance</span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ACTIVE ANOMALY BANNER (Hidden by default, shown during anomaly) -->
+  <div id="anomalyBanner" class="hidden bg-rose-950/90 border-b border-rose-500/60 px-4 lg:px-6 py-2.5 backdrop-blur-md">
+    <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/20 border border-rose-400 text-rose-300 animate-pulse">
+          <i class="fa-solid fa-radiation"></i>
+        </span>
+        <div>
+          <p id="anomalyTitle" class="text-xs sm:text-sm font-bold text-rose-200 tracking-wide uppercase">ALERT: EVA SUIT PRESSURE DROP &amp; TACHYCARDIA SPIKE</p>
+          <p id="anomalyDesc" class="text-xs text-rose-300/90">Automated AI triage activated. Execute Flight Surgeon countermeasures in the Telemetry Console to stabilize crew vitals.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
+        <button onclick="switchFrontendView('dashboard')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-rose-400/50 text-rose-200 font-semibold text-xs transition cursor-pointer">
+          Open Console
+        </button>
+        <button onclick="resolveAllAnomalies()" class="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-semibold text-xs transition cursor-pointer">
+          Override &amp; Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 1: MISSION PORTAL / FRONTEND LANDING EXPERIENCE                    -->
+  <!-- ======================================================================= -->
+  <section id="view-portal" class="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-6 py-6 space-y-6">
+    
+    <!-- Hero Banner -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-space-900 via-space-850 to-space-950 border border-slate-800 p-6 sm:p-8 lg:p-10 shadow-2xl">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        
+        <!-- Left Hero Copy -->
+        <div class="lg:col-span-7 space-y-5">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            2026 NASA SPACE APPS CHALLENGE // ARTEMIS DEEP-SPACE MEDICAL SUITE
+          </div>
+
+          <h2 class="text-2xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-tight">
+            Autonomous Health Telemetry for <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400">Deep-Space Voyagers</span>
+          </h2>
+
+          <p class="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
+            Built for lunar Gateway and Mars transit missions where communication latency reaches 22 minutes. <strong class="text-white">ASTRA-MED</strong> fuses 250Hz wearable biosensors, microgravity adaptation tracking, AI Flight Surgeon triage, and <strong class="text-emerald-300">CCSDS SDLS AES-256-GCM</strong> encryption into one unified mission interface.
+          </p>
+
+          <!-- Primary CTA Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            <button onclick="switchFrontendView('dashboard')" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm flex items-center gap-2.5 shadow-lg shadow-cyan-500/25 transition cursor-pointer">
+              <i class="fa-solid fa-heart-pulse"></i>
+              <span>Launch Live Telemetry Console</span>
+            </button>
+            <button onclick="switchFrontendView('crew-profiles')" class="px-5 py-3 rounded-2xl bg-space-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm flex items-center gap-2 transition cursor-pointer">
+              <i class="fa-solid fa-users"></i>
+              <span>Inspect Crew Readiness</span>
+            </button>
+            <button onclick="toggleSecurityModal(true)" class="px-4 py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-xs font-semibold flex items-center gap-2 transition cursor-pointer">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>Verify Encryption Stack</span>
+            </button>
+          </div>
+
+          <!-- Live Mission KPI Strip -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-800/80 font-mono">
+            <div>
+              <div class="text-[11px] text-slate-400">CREW STATUS</div>
+              <div id="portalCrewSummary" class="text-sm sm:text-base font-bold text-emerald-400 mt-0.5">4/4 ACTIVE</div>
+            </div>
+            <div>
+              <div class="text-[11px] text-slate-400">ORBITAL REGIME</div>
+              <div class="text-sm sm:text-base font-bold text-cyan-300 mt-0.5">Lunar NRHO</div>
+            </div>
+            <div>
+              <div class="text-[11px] text-slate-400">LINK CIPHER</div>
+              <div class="text-sm sm:text-base font-bold text-emerald-300 mt-0.5">AES-256-GCM</div>
+            </div>
+            <div>
+              <div class="text-[11px] text-slate-400">DATA BACKBONE</div>
+              <div class="text-sm sm:text-base font-bold text-indigo-300 mt-0.5">NASA OSDR</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Interactive Orbital & Biometric Schematic -->
+        <div class="lg:col-span-5 flex items-center justify-center">
+          <div class="relative w-full max-w-sm aspect-square bg-space-950/90 border border-slate-800 rounded-3xl p-4 flex items-center justify-center shadow-inner float-slow">
+            <svg viewBox="0 0 320 320" class="w-full h-full">
+              <!-- Outer Radar Grid -->
+              <circle cx="160" cy="160" r="135" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="4 4" />
+              <circle cx="160" cy="160" r="98" fill="none" stroke="#0f172a" stroke-width="1.5" />
+              <ellipse cx="160" cy="160" rx="128" ry="56" transform="rotate(-24 160 160)" fill="none" stroke="rgba(34, 211, 238, 0.35)" stroke-width="1.5" />
+
+              <!-- Lunar Sphere -->
+              <defs>
+                <radialGradient id="moonGrad" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stop-color="#94a3b8" />
+                  <stop offset="60%" stop-color="#475569" />
+                  <stop offset="100%" stop-color="#0f172a" />
+                </radialGradient>
+              </defs>
+              <circle cx="160" cy="160" r="44" fill="url(#moonGrad)" stroke="#64748b" stroke-width="1" />
+              <circle cx="146" cy="148" r="8" fill="rgba(15, 23, 42, 0.35)" />
+              <circle cx="174" cy="172" r="11" fill="rgba(15, 23, 42, 0.3)" />
+              <circle cx="172" cy="144" r="5" fill="rgba(15, 23, 42, 0.28)" />
+
+              <!-- Orbiting Gateway Satellite Node -->
+              <g class="orbit-spin">
+                <circle cx="160" cy="32" r="7" fill="#22d3ee" />
+                <circle cx="160" cy="32" r="14" fill="rgba(34, 211, 238, 0.25)" />
+              </g>
+
+              <!-- Telemetry Callout Tags -->
+              <g font-family="JetBrains Mono, monospace" font-size="10">
+                <rect x="14" y="18" width="136" height="34" rx="8" fill="#091122" stroke="#1e293b" />
+                <text x="24" y="33" fill="#22d3ee" font-weight="bold">GATEWAY-4 // NRHO</text>
+                <text x="24" y="45" fill="#94a3b8">OWLT: 1.28s • DSN OK</text>
+
+                <rect x="164" y="266" width="142" height="34" rx="8" fill="#091122" stroke="#065f46" />
+                <text x="174" y="281" fill="#34d399" font-weight="bold">SDLS ENCRYPTED</text>
+                <text x="174" y="293" fill="#94a3b8">ML-KEM + AES-256</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Crew Quick-Jump Cards on Portal -->
+    <div class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white">Live Artemis-IV Crew Biometric Snapshot</h3>
+          <p class="text-xs text-slate-400">Select any astronaut to open their real-time ECG, sensor array &amp; countermeasure console</p>
+        </div>
+        <button onclick="switchFrontendView('dashboard')" class="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 cursor-pointer">
+          <span>Full Console</span> <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+      <div id="portalCrewPreviewGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- Core Platform Capabilities Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div onclick="switchFrontendView('dashboard')" class="bg-space-900/90 hover:bg-space-850 border border-slate-800 hover:border-cyan-500/40 rounded-2xl p-5 transition cursor-pointer space-y-2.5">
+        <div class="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+          <i class="fa-solid fa-wave-square text-lg"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">250 Hz Biosensor Telemetry</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Real-time Lead-II ECG waveform synthesis, SpO2 plethysmography, intraocular SANS pressure, and cumulative space radiation tracking.</p>
+      </div>
+
+      <div onclick="switchFrontendView('crew-profiles')" class="bg-space-900/90 hover:bg-space-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 transition cursor-pointer space-y-2.5">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <i class="fa-solid fa-user-doctor text-lg"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">AI Flight Surgeon Triage</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Interactive anomaly simulation (EVA suit leaks, solar particle events, dehydration) with closed-loop physiological countermeasures.</p>
+      </div>
+
+      <div onclick="toggleSecurityModal(true)" class="bg-space-900/90 hover:bg-space-850 border border-slate-800 hover:border-purple-500/40 rounded-2xl p-5 transition cursor-pointer space-y-2.5">
+        <div class="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+          <i class="fa-solid fa-lock text-lg"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">Zero-Trust Space Cryptography</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">CCSDS 355.0-B-2 SDLS link encryption, BPSec DTN bundles, ML-KEM-1024 post-quantum key rotation, and HIPAA/OSDR PII masking.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 2: PRIMARY TELEMETRY & ANATOMICAL DIAGNOSTICS DASHBOARD            -->
+  <!-- ======================================================================= -->
+  <main id="view-dashboard" class="hidden flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-6 py-5 space-y-5">
+
+    <!-- 1. CREW MEMBER SELECTOR BAR -->
+    <section aria-label="Crew Selector">
+      <div class="flex items-center justify-between mb-2.5">
+        <h2 class="text-xs font-mono uppercase tracking-widest text-slate-400 flex items-center gap-2">
+          <i class="fa-solid fa-users-viewfinder text-cyan-400"></i> Active Flight Crew Telemetry Roster
+        </h2>
+        <span class="text-xs text-slate-500 font-mono hidden sm:inline">Select crewmember to inspect biometric downlink</span>
+      </div>
+      <div id="crewSelectorGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- 2. PRIMARY TELEMETRY & ANATOMICAL DIAGNOSTICS GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+      <!-- LEFT/CENTER COLUMN (8 cols on lg): Vitals Cards + Live ECG Waveform + Space Exposure -->
+      <div class="lg:col-span-8 space-y-5">
+
+        <!-- 4 Core Biometric Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          <!-- Heart Rate Card -->
+          <div id="card-hr" class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between transition-all">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-400">Heart Rate</span>
+              <span class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xs">
+                <i class="fa-solid fa-heart-pulse"></i>
+              </span>
+            </div>
+            <div class="my-2 flex items-baseline gap-2">
+              <span id="val-hr" class="text-3xl font-bold font-mono text-white">72</span>
+              <span class="text-xs font-mono text-slate-400">BPM</span>
+            </div>
+            <div class="flex items-center justify-between text-[11px] font-mono">
+              <span id="status-hr" class="text-emerald-400">● NOMINAL (60-100)</span>
+              <span id="trend-hr" class="text-slate-400">HRV: 64ms</span>
+            </div>
+          </div>
+
+          <!-- Blood Oxygen (SpO2) & Respiration Card -->
+          <div id="card-spo2" class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between transition-all">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-400">Blood Oxygen / Resp</span>
+              <span class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs">
+                <i class="fa-solid fa-lungs"></i>
+              </span>
+            </div>
+            <div class="my-2 flex items-baseline justify-between">
+              <div>
+                <span id="val-spo2" class="text-3xl font-bold font-mono text-white">98.6</span>
+                <span class="text-xs font-mono text-slate-400">%</span>
+              </div>
+              <div class="text-right">
+                <span id="val-resp" class="text-lg font-semibold font-mono text-cyan-300">14</span>
+                <span class="text-[11px] font-mono text-slate-400">BrPM</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] font-mono">
+              <span id="status-spo2" class="text-emerald-400">● O2 SAT OPTIMAL</span>
+              <span id="val-suit-o2" class="text-slate-400">ppO2: 21.3 kPa</span>
+            </div>
+          </div>
+
+          <!-- Core Body Temp & Hydration Card -->
+          <div id="card-temp" class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between transition-all">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-400">Core Temp &amp; Hydration</span>
+              <span class="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xs">
+                <i class="fa-solid fa-temperature-half"></i>
+              </span>
+            </div>
+            <div class="my-2 flex items-baseline justify-between">
+              <div>
+                <span id="val-temp" class="text-3xl font-bold font-mono text-white">36.9</span>
+                <span class="text-xs font-mono text-slate-400">°C</span>
+              </div>
+              <div class="text-right">
+                <span id="val-hydro" class="text-lg font-semibold font-mono text-sky-300">92</span>
+                <span class="text-[11px] font-mono text-slate-400">% H2O</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] font-mono">
+              <span id="status-temp" class="text-emerald-400">● THERMOREGULATED</span>
+              <span class="text-slate-400">2.4L / 24h</span>
+            </div>
+          </div>
+
+          <!-- Cumulative Radiation Exposure Card -->
+          <div id="card-rad" class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between transition-all">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-400">Cumulative Radiation</span>
+              <span class="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xs">
+                <i class="fa-solid fa-radiation"></i>
+              </span>
+            </div>
+            <div class="my-2 flex items-baseline justify-between">
+              <div>
+                <span id="val-rad" class="text-2xl font-bold font-mono text-white">118.4</span>
+                <span class="text-xs font-mono text-slate-400">mSv</span>
+              </div>
+              <span id="val-rad-rate" class="text-xs font-mono text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/25">0.82 mSv/d</span>
+            </div>
+            <div class="space-y-1">
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="bar-rad" class="h-full bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full transition-all duration-500" style="width: 20%"></div>
+              </div>
+              <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                <span>NASA CAREER LIMIT: 600 mSv</span>
+                <span id="pct-rad">19.7%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE ECG WAVEFORM & CARDIOPULMONARY MONITOR -->
+        <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold text-white">Real-Time Lead-II ECG &amp; Plethysmograph Telemetry</h3>
+                <span id="ecgLiveBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">250 Hz STREAM</span>
+              </div>
+              <p class="text-xs text-slate-400">Bio-Harness Biosensor Array • Continuous cardiac rhythm &amp; microgravity vascular impedance</p>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-mono">
+              <div>
+                <span class="text-slate-400">BP:</span>
+                <span id="val-bp" class="text-slate-100 font-semibold">118/76 mmHg</span>
+              </div>
+              <div>
+                <span class="text-slate-400">QRS:</span>
+                <span class="text-emerald-400 font-semibold">88 ms</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Responsive Canvas Container -->
+          <div id="ecgContainer" class="relative w-full h-44 sm:h-52 bg-space-950 rounded-xl border border-slate-800/90 overflow-hidden">
+            <canvas id="ecgCanvas" class="block w-full h-full"></canvas>
+            <!-- Overlay Grid Legend -->
+            <div class="absolute top-2.5 left-3 flex items-center gap-3 text-[10px] font-mono text-slate-400 pointer-events-none">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyan-400"></span> ECG LEAD II</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> SpO2 PULSE</span>
+            </div>
+            <div id="ecgRhythmLabel" class="absolute bottom-2.5 right-3 text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900/90 border border-slate-700 text-emerald-400 pointer-events-none">
+              SINUS RHYTHM // NORMAL
+            </div>
+          </div>
+        </div>
+
+        <!-- MICROGRAVITY ADAPTATION & SPACEFLIGHT PHYSIOLOGY METRICS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          <!-- Bone Mineral Density & Muscle Mass -->
+          <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-bone text-cyan-400"></i> Musculoskeletal Index
+              </span>
+              <span id="val-bone" class="text-xs font-mono font-bold text-emerald-400">97.4%</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Femoral neck BMD &amp; calf muscle volume retention vs. pre-flight baseline.</p>
+            <div class="space-y-2 text-[11px] font-mono">
+              <div>
+                <div class="flex justify-between mb-1"><span class="text-slate-400">Bone Density (DXA Est.)</span><span id="val-bmd-sub" class="text-slate-200">-1.8%</span></div>
+                <div class="w-full h-1.5 bg-slate-800 rounded-full"><div id="bar-bmd" class="h-full bg-cyan-400 rounded-full" style="width: 96%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1"><span class="text-slate-400">ARED Resistance Load</span><span id="val-ared" class="text-emerald-400">100% Quota</span></div>
+                <div class="w-full h-1.5 bg-slate-800 rounded-full"><div class="h-full bg-emerald-400 rounded-full" style="width: 100%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Neuro-Vestibular & Circadian Sleep -->
+          <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-brain text-indigo-400"></i> Circadian &amp; SANS Monitor
+              </span>
+              <span id="val-sleep" class="text-xs font-mono font-bold text-indigo-300">7.4h / 8h</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Spaceflight Associated Neuro-ocular Syndrome (ICP) &amp; REM sleep quality.</p>
+            <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+              <div class="bg-space-950/80 border border-slate-800/80 rounded-xl p-2">
+                <div class="text-slate-400 text-[10px]">Intraocular Press.</div>
+                <div id="val-iop" class="text-slate-100 font-semibold mt-0.5">15.2 mmHg</div>
+              </div>
+              <div class="bg-space-950/80 border border-slate-800/80 rounded-xl p-2">
+                <div class="text-slate-400 text-[10px]">Cognitive Readiness</div>
+                <div id="val-cog" class="text-emerald-400 font-semibold mt-0.5">96 / 100</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EVA Suit / Habitat ECLSS Telemetry -->
+          <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-user-astronaut text-amber-400"></i> Suit / Hab ECLSS
+              </span>
+              <span id="val-suit-status" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">SEALED</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Closed-loop environmental life support &amp; CO2 scrubber efficiency.</p>
+            <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+              <div class="bg-space-950/80 border border-slate-800/80 rounded-xl p-2">
+                <div class="text-slate-400 text-[10px]">Cabin/Suit Press.</div>
+                <div id="val-pressure" class="text-slate-100 font-semibold mt-0.5">101.3 kPa</div>
+              </div>
+              <div class="bg-space-950/80 border border-slate-800/80 rounded-xl p-2">
+                <div class="text-slate-400 text-[10px]">ppCO2 Level</div>
+                <div id="val-co2" class="text-cyan-300 font-semibold mt-0.5">0.28 kPa</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN (4 cols on lg): Interactive Anatomical Biometric Map + AI Flight Surgeon Log -->
+      <div class="lg:col-span-4 space-y-5 flex flex-col">
+
+        <!-- INTERACTIVE 2D ANATOMICAL BIOMETRIC MAP -->
+        <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Biometric Sensor Array Map</h3>
+              <p class="text-xs text-slate-400">Click physiological nodes to inspect telemetry</p>
+            </div>
+            <span class="text-[11px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-md">5 NODES</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 items-center mt-2">
+            <!-- SVG Schematic Body -->
+            <div class="relative bg-space-950/90 border border-slate-800/90 rounded-xl p-2 flex items-center justify-center h-64">
+              <svg viewBox="0 0 220 320" class="w-full h-full max-h-60 select-none" aria-label="Interactive Astronaut Biometric Map">
+                <!-- Technical Grid Rings -->
+                <circle cx="110" cy="155" r="95" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+                <circle cx="110" cy="155" r="65" fill="none" stroke="#1e293b" stroke-width="1" />
+                <line x1="15" y1="155" x2="205" y2="155" stroke="#0f172a" stroke-width="1" />
+                <line x1="110" y1="15" x2="110" y2="305" stroke="#0f172a" stroke-width="1" />
+
+                <!-- Stylized Astronaut / Human Silhouette -->
+                <g fill="rgba(14, 165, 233, 0.08)" stroke="#38bdf8" stroke-width="1.5" stroke-linejoin="round">
+                  <!-- Helmet / Head -->
+                  <circle cx="110" cy="46" r="22" />
+                  <path d="M95 44 Q110 36 125 44 Q125 56 110 58 Q95 56 95 44 Z" fill="rgba(56, 189, 248, 0.18)" />
+                  <!-- Torso / Suit Chest -->
+                  <path d="M82 76 L138 76 L146 156 L134 176 L86 176 L74 156 Z" />
+                  <!-- Left Arm -->
+                  <path d="M74 80 L52 132 L46 172 L58 175 L68 136 L80 96" />
+                  <!-- Right Arm -->
+                  <path d="M146 80 L168 132 L174 172 L162 175 L152 136 L140 96" />
+                  <!-- Left Leg -->
+                  <path d="M86 176 L80 242 L76 294 L94 294 L100 242 L106 184" />
+                  <!-- Right Leg -->
+                  <path d="M134 176 L140 242 L144 294 L126 294 L120 242 L114 184" />
+                </g>
+
+                <!-- Interactive Sensor Nodes -->
+                <!-- 1. Neural / Ocular (Head) -->
+                <g class="cursor-pointer group" onclick="selectBodyNode('neural')">
+                  <circle id="pulse-neural" cx="110" cy="46" r="10" fill="rgba(129, 140, 248, 0.35)" class="sensor-pulse" />
+                  <circle id="node-neural" cx="110" cy="46" r="6" fill="#818cf8" stroke="#040812" stroke-width="2" />
+                </g>
+
+                <!-- 2. Cardiovascular (Chest Left) -->
+                <g class="cursor-pointer group" onclick="selectBodyNode('cardio')">
+                  <circle id="pulse-cardio" cx="120" cy="105" r="11" fill="rgba(34, 211, 238, 0.35)" class="sensor-pulse" />
+                  <circle id="node-cardio" cx="120" cy="105" r="6.5" fill="#22d3ee" stroke="#040812" stroke-width="2" />
+                </g>
+
+                <!-- 3. Suit ECLSS / Life Support (Chest Right Pack) -->
+                <g class="cursor-pointer group" onclick="selectBodyNode('eclss')">
+                  <circle id="pulse-eclss" cx="94" cy="102" r="10" fill="rgba(251, 191, 36, 0.35)" class="sensor-pulse" />
+                  <circle id="node-eclss" cx="94" cy="102" r="6" fill="#fbbf24" stroke="#040812" stroke-width="2" />
+                </g>
+
+                <!-- 4. Hydration & Metabolic (Abdomen) -->
+                <g class="cursor-pointer group" onclick="selectBodyNode('metabolic')">
+                  <circle id="pulse-metabolic" cx="110" cy="145" r="10" fill="rgba(52, 211, 153, 0.35)" class="sensor-pulse" />
+                  <circle id="node-metabolic" cx="110" cy="145" r="6" fill="#34d399" stroke="#040812" stroke-width="2" />
+                </g>
+
+                <!-- 5. Musculoskeletal / Bone Density (Femur/Leg) -->
+                <g class="cursor-pointer group" onclick="selectBodyNode('musculo')">
+                  <circle id="pulse-musculo" cx="131" cy="222" r="10" fill="rgba(192, 132, 252, 0.35)" class="sensor-pulse" />
+                  <circle id="node-musculo" cx="131" cy="222" r="6" fill="#c084fc" stroke="#040812" stroke-width="2" />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Selected Node Diagnostic Readout -->
+            <div id="nodeDetailPanel" class="bg-space-950/90 border border-slate-800 rounded-xl p-3.5 h-64 flex flex-col justify-between">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+
+          <!-- Quick Node Pill Switcher -->
+          <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-800/80">
+            <button onclick="selectBodyNode('cardio')" class="node-pill text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition cursor-pointer">Cardio</button>
+            <button onclick="selectBodyNode('neural')" class="node-pill text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition cursor-pointer">Neural/SANS</button>
+            <button onclick="selectBodyNode('eclss')" class="node-pill text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition cursor-pointer">Suit ECLSS</button>
+            <button onclick="selectBodyNode('metabolic')" class="node-pill text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 transition cursor-pointer">Metabolic</button>
+            <button onclick="selectBodyNode('musculo')" class="node-pill text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 transition cursor-pointer">Bone/Muscle</button>
+          </div>
+        </div>
+
+        <!-- COMPACT TELEMETRY LINK SECURITY & HIPAA/PRIVACY STATUS WIDGET -->
+        <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xs">
+                <i class="fa-solid fa-lock"></i>
+              </div>
+              <div>
+                <h3 class="text-xs sm:text-sm font-semibold text-white">Telemetry Link Security &amp; Privacy</h3>
+                <p class="text-[11px] font-mono text-emerald-400">CCSDS 355.0-B-2 • BPSec RFC 9172</p>
+              </div>
+            </div>
+            <button onclick="toggleSecurityModal(true)" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 transition cursor-pointer">
+              Inspect <i class="fa-solid fa-arrow-up-right-from-square ml-1 text-[9px]"></i>
+            </button>
+          </div>
+
+          <!-- Key ID & Frame Auth Mini Metrics -->
+          <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+            <div class="bg-space-950/90 border border-slate-800/90 rounded-xl p-2.5">
+              <div class="text-slate-400 text-[10px]">ACTIVE SESSION KEY</div>
+              <div id="widgetKeyId" class="text-cyan-300 font-semibold truncate mt-0.5">SDLS-K256-8F9A</div>
+            </div>
+            <div class="bg-space-950/90 border border-slate-800/90 rounded-xl p-2.5">
+              <div class="text-slate-400 text-[10px]">FRAME AUTH / HASH</div>
+              <div id="widgetChecksum" class="text-emerald-400 font-semibold truncate mt-0.5">100% • 0x9E4C</div>
+            </div>
+          </div>
+
+          <!-- RBAC Privacy Mode Toggle & Key Rotate Quick Action -->
+          <div class="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+            <button id="rbacToggleBtn" onclick="togglePrivacyMode()" class="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-[11px] font-mono text-slate-200 flex items-center justify-center gap-1.5 transition cursor-pointer">
+              <i id="rbacIcon" class="fa-solid fa-user-shield text-cyan-400"></i>
+              <span id="rbacLabel">Surgeon View [PII]</span>
+            </button>
+            <button onclick="rotateSessionKey()" class="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-[11px] font-mono text-emerald-300 flex items-center justify-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-key"></i>
+              <span>Rotate Key</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- AI FLIGHT SURGEON & COUNTERMEASURE PROTOCOL LOG -->
+        <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex-1 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                <i class="fa-solid fa-user-doctor text-emerald-400"></i> AI Flight Surgeon Protocols
+              </h3>
+              <span id="protocolCountBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">ACTIVE</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Execute countermeasures to stabilize crew vitals &amp; log to Mission Control.</p>
+
+            <!-- Interactive Checklist -->
+            <div id="countermeasureList" class="space-y-2.5">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+
+          <!-- Telemetry Event Console Log -->
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <div class="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1.5">
+              <span>FLIGHT SURGEON TELEMETRY LOG</span>
+              <span class="text-cyan-400">AUTO-SYNC: OSDR</span>
+            </div>
+            <div id="eventLogBox" class="bg-space-950 border border-slate-800/90 rounded-xl p-2.5 h-24 overflow-y-auto space-y-1 text-[11px] font-mono">
+              <!-- Logs appended dynamically -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 3: CREW & MEDICAL READINESS ROSTER VIEW                            -->
+  <!-- ======================================================================= -->
+  <section id="view-crew-profiles" class="hidden flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-6 py-6 space-y-5">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-space-900/90 border border-slate-800 rounded-2xl p-5">
+      <div>
+        <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2.5">
+          <i class="fa-solid fa-clipboard-check text-emerald-400"></i> Artemis-IV Crew Medical Readiness &amp; Microgravity Adaptation
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">Longitudinal flight surgeon evaluation across cardiovascular, musculoskeletal (ARED), neuro-ocular (SANS), and radiation limits.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="togglePrivacyMode()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-mono text-cyan-300 flex items-center gap-2 transition cursor-pointer">
+          <i class="fa-solid fa-user-shield"></i>
+          <span>Toggle PII / OSDR Anonymization</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="crewReadinessFullGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <!-- Populated dynamically via JS -->
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 4: 2026 NASA SPACE APPS CHALLENGE & SECURITY ARCHITECTURE BRIEF    -->
+  <!-- ======================================================================= -->
+  <section id="view-mission-brief" class="hidden flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-6 py-6 space-y-5">
+    <div class="bg-space-900/90 border border-slate-800 rounded-2xl p-6 space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
+            <i class="fa-solid fa-satellite-dish text-xl"></i>
+          </div>
+          <div>
+            <h2 class="text-lg sm:text-2xl font-bold text-white">ASTRA-MED // 2026 NASA Space Apps Architecture</h2>
+            <p class="text-xs font-mono text-indigo-300">Deep-Space Crew Health Monitoring, NASA Open Science Data Integration &amp; CCSDS Security</p>
+          </div>
+        </div>
+        <button onclick="switchFrontendView('dashboard')" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs transition cursor-pointer self-start sm:self-center">
+          Return to Live Telemetry
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-space-950 border border-slate-800 rounded-2xl p-5 space-y-3">
+          <h3 class="text-sm font-mono uppercase tracking-wider text-cyan-400 font-semibold">1. NASA &amp; Space Agency Open Datasets</h3>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <li><strong class="text-white">• NASA Open Science Data Repository (OSDR) &amp; GeneLab:</strong> Spaceflight physiological baselines for cardiovascular deconditioning, bone mineral density loss (~1–1.5%/month in microgravity), and radiation biomarkers.</li>
+            <li><strong class="text-white">• NASA Human Research Program (HRP) Evidence Reports:</strong> Countermeasure protocols including Advanced Resistive Exercise Device (ARED) loading, Spaceflight Associated Neuro-ocular Syndrome (SANS) intraocular monitoring, and ALARA radiation career limits (600 mSv).</li>
+            <li><strong class="text-white">• ISS Environmental Control &amp; Life Support (ECLSS):</strong> Cabin and EMU suit partial oxygen pressure ($ppO_2$), $ppCO_2$ scrubbing, and thermal cooling loop diagnostics.</li>
+          </ul>
+        </div>
+
+        <div class="bg-space-950 border border-emerald-500/30 rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-mono uppercase tracking-wider text-emerald-400 font-semibold">2. Deep-Space Crew Data Encryption Stack</h3>
+            <button onclick="toggleSecurityModal(true)" class="text-xs font-mono text-emerald-300 underline cursor-pointer">Open Crypto Console</button>
+          </div>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <li><strong class="text-white">• Space Data Link Security (CCSDS 355.0-B-2):</strong> Frame-level <code class="text-emerald-300">AES-256-GCM</code> authenticated encryption directly between Gateway/EVA suits and the Deep Space Network.</li>
+            <li><strong class="text-white">• Delay-Tolerant Networking (BPSec RFC 9172):</strong> Protects store-and-forward biometric bundles across high-latency lunar/Mars relays via <code class="text-cyan-300">HMAC-SHA-384</code> integrity blocks.</li>
+            <li><strong class="text-white">• Post-Quantum &amp; HIPAA RBAC:</strong> Hybrid <code class="text-indigo-300">ECDHE + ML-KEM-1024</code> session key rotation paired with cryptographic PII masking for open-science researchers.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-800/80 bg-space-900/80 px-4 lg:px-6 py-3 text-xs font-mono text-slate-400">
+    <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>ASTRA-MED // 2026 NASA SPACE APPS CHALLENGE PROTOTYPE</div>
+      <div class="flex items-center gap-4">
+        <span class="text-emerald-400">● CCSDS SDLS AES-256-GCM</span>
+        <span class="text-cyan-400">● NASA OSDR / HRP INTEGRATED</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- NASA SPACE APPS CHALLENGE PROJECT INFO MODAL -->
+  <div id="projectModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-4 border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
+            <i class="fa-solid fa-satellite-dish text-lg"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white">ASTRA-MED // 2026 NASA Space Apps Prototype</h2>
+            <p class="text-xs text-indigo-300 font-mono">Autonomous Deep-Space Crew Health &amp; Countermeasure Telemetry</p>
+          </div>
+        </div>
+        <button onclick="toggleProjectModal(false)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <p>
+          As human spaceflight extends beyond Low Earth Orbit toward the Moon (Artemis) and Mars, communication latency (up to 22 minutes one-way) requires <strong class="text-cyan-300">autonomous onboard health monitoring and predictive triage</strong>.
+        </p>
+
+        <div class="bg-space-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-cyan-400 font-semibold">Integrated NASA &amp; Space Agency Open Datasets</h3>
+          <ul class="space-y-1.5 text-xs text-slate-300">
+            <li><strong class="text-white">• NASA Open Science Data Repository (OSDR) &amp; GeneLab:</strong> Spaceflight physiological baselines for cardiovascular deconditioning, bone mineral density loss (~1–1.5%/month in microgravity), and radiation biomarkers.</li>
+            <li><strong class="text-white">• NASA Human Research Program (HRP) Evidence Reports:</strong> Countermeasure protocols including Advanced Resistive Exercise Device (ARED) loading, Spaceflight Associated Neuro-ocular Syndrome (SANS) intraocular monitoring, and ALARA radiation career limits (600 mSv).</li>
+            <li><strong class="text-white">• ISS Environmental Control &amp; Life Support (ECLSS) Telemetry:</strong> Cabin/EVA suit partial oxygen pressure ($ppO_2$), $ppCO_2$ scrubbing, and thermal loop diagnostics.</li>
+          </ul>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs font-mono">
+          <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-2.5">
+            <div class="text-cyan-400 font-bold">1. Real-Time Biometrics</div>
+            <div class="text-slate-400 text-[11px] mt-0.5">250Hz ECG synthesis, SpO2, core temp &amp; radiation tracking.</div>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-2.5">
+            <div class="text-rose-400 font-bold">2. Anomaly Triage</div>
+            <div class="text-slate-400 text-[11px] mt-0.5">Simulates EVA suit leaks, solar particle events &amp; dehydration.</div>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-2.5">
+            <div class="text-emerald-400 font-bold">3. Closed-Loop Action</div>
+            <div class="text-slate-400 text-[11px] mt-0.5">Interactive Flight Surgeon countermeasures stabilize live metrics.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-800">
+        <button onclick="toggleProjectModal(false)" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs transition cursor-pointer">
+          Return to Mission Console
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRYPTOGRAPHIC & CREW DATA PRIVACY ARCHITECTURE MODAL -->
+  <div id="securityModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-emerald-500/40 rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between gap-4 border-b border-slate-800 pb-3.5">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shadow-lg shadow-emerald-500/10">
+            <i class="fa-solid fa-shield-halved text-xl"></i>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base sm:text-lg font-bold text-white">Cryptographic &amp; Crew Data Privacy Architecture</h2>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">FIPS 140-3 LEVEL 3</span>
+            </div>
+            <p class="text-xs text-slate-400 font-mono">End-to-End CCSDS Space Link Security, Post-Quantum TLS &amp; HIPAA / NASA Privacy Act Compliance</p>
+          </div>
+        </div>
+        <button onclick="toggleSecurityModal(false)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition cursor-pointer shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 1. END-TO-END LINK PIPELINE VISUALIZATION -->
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-cyan-400 font-semibold">
+            <i class="fa-solid fa-diagram-project mr-1.5"></i> End-to-End Space-to-Ground Cryptographic Pipeline
+          </h3>
+          <span class="text-[11px] font-mono text-emerald-400">● ZERO PLAINTEXT EXPOSURE</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 text-xs">
+          <!-- Stage 1 -->
+          <div class="bg-space-950 border border-slate-800 rounded-xl p-3 flex flex-col justify-between relative">
+            <div>
+              <div class="text-[10px] font-mono text-slate-400">01 // ORIGIN</div>
+              <div class="font-semibold text-white mt-0.5">Suit &amp; Habitat Sensors</div>
+              <p class="text-[11px] text-slate-400 mt-1">250Hz ECG, SpO2 &amp; dosimetry hardware root-of-trust.</p>
+            </div>
+            <div class="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] font-mono text-cyan-300">Hardware TPM 2.0</div>
+          </div>
+
+          <!-- Stage 2 -->
+          <div class="bg-space-950 border border-emerald-500/35 rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <div class="text-[10px] font-mono text-emerald-400">02 // SPACE LINK</div>
+              <div class="font-semibold text-white mt-0.5">CCSDS SDLS</div>
+              <p class="text-[11px] text-slate-400 mt-1">CCSDS 355.0-B-2 frame-level authenticated encryption.</p>
+            </div>
+            <div class="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] font-mono text-emerald-300">AES-256-GCM</div>
+          </div>
+
+          <!-- Stage 3 -->
+          <div class="bg-space-950 border border-cyan-500/35 rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <div class="text-[10px] font-mono text-cyan-400">03 // DTN RELAY</div>
+              <div class="font-semibold text-white mt-0.5">Deep Space DTN</div>
+              <p class="text-[11px] text-slate-400 mt-1">BPSec RFC 9172 store-and-forward BCB/BIB bundles.</p>
+            </div>
+            <div class="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] font-mono text-cyan-300">HMAC-SHA-384</div>
+          </div>
+
+          <!-- Stage 4 -->
+          <div class="bg-space-950 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <div class="text-[10px] font-mono text-amber-400">04 // DOWNLINK</div>
+              <div class="font-semibold text-white mt-0.5">DSN Ground Station</div>
+              <p class="text-[11px] text-slate-400 mt-1">Goldstone / Madrid / Canberra RF receiver enclave.</p>
+            </div>
+            <div class="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] font-mono text-amber-300">IPsec + MACsec</div>
+          </div>
+
+          <!-- Stage 5 -->
+          <div class="bg-space-950 border border-indigo-500/40 rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <div class="text-[10px] font-mono text-indigo-400">05 // CONSOLE</div>
+              <div class="font-semibold text-white mt-0.5">Flight Surgeon UI</div>
+              <p class="text-[11px] text-slate-400 mt-1">TLS 1.3 + mTLS with X.509 &amp; FIDO2 hardware keys.</p>
+            </div>
+            <div class="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] font-mono text-indigo-300">ECDHE + ML-KEM</div>
+          </div>
+
+          <!-- Stage 6 -->
+          <div class="bg-space-950 border border-purple-500/40 rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <div class="text-[10px] font-mono text-purple-400">06 // ARCHIVE</div>
+              <div class="font-semibold text-white mt-0.5">NASA OSDR Vault</div>
+              <p class="text-[11px] text-slate-400 mt-1">De-identified open science storage at rest.</p>
+            </div>
+            <div class="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] font-mono text-purple-300">AES-256-XTS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. LIVE CRYPTOGRAPHIC TELEMETRY METRICS & INTERACTIVE CONTROLS -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        <!-- Left: Live Key Rotation & Frame Integrity Telemetry -->
+        <div class="lg:col-span-7 bg-space-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">Live Cryptographic Session Telemetry</h4>
+            <span class="text-[11px] font-mono text-slate-400">PQC HYBRID: <strong class="text-indigo-300">ML-KEM-1024</strong></span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+            <div class="bg-space-900 border border-slate-800 rounded-xl p-3">
+              <div class="text-[10px] text-slate-400">FRAME AUTH RATE</div>
+              <div class="text-lg font-bold text-emerald-400 mt-0.5">100.0%</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">0 Replay / Tamper Drops</div>
+            </div>
+
+            <div id="modalKeyCard" class="bg-space-900 border border-slate-800 rounded-xl p-3 transition-all">
+              <div class="text-[10px] text-slate-400">ACTIVE SESSION KEY ID</div>
+              <div id="modalKeyId" class="text-sm font-bold text-cyan-300 mt-1 truncate">SDLS-K256-8F9A-2026</div>
+              <div id="modalKeyAge" class="text-[10px] text-slate-500 mt-0.5">Epoch #14 • Valid</div>
+            </div>
+
+            <div class="bg-space-900 border border-slate-800 rounded-xl p-3">
+              <div class="text-[10px] text-slate-400">PACKET INTEGRITY TAG</div>
+              <div id="modalChecksum" class="text-sm font-bold text-amber-300 mt-1 truncate">0x9E4C...A71B</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">128-bit GCM Auth Tag</div>
+            </div>
+          </div>
+
+          <!-- Interactive Key Rotation Button & Live Stream Feed -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <div class="text-[11px] font-mono text-slate-400">
+              <span>Last GCM Tag: </span>
+              <span id="modalPacketStream" class="text-emerald-400">FRAME #48920 [VERIFIED OK]</span>
+            </div>
+            <button id="rotateKeyModalBtn" onclick="rotateSessionKey()" class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0 shadow-lg shadow-emerald-500/20">
+              <i id="rotateKeyIcon" class="fa-solid fa-rotate"></i>
+              <span>Rotate Session Key</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Crew Medical Privacy / HIPAA & NASA Privacy Act RBAC Toggle -->
+        <div class="lg:col-span-5 bg-space-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="text-xs font-mono uppercase tracking-wider text-indigo-300 font-semibold">HIPAA &amp; NASA Privacy Act RBAC</h4>
+              <span id="modalRbacBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/40">SURGEON PII</span>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Segregates identifiable astronaut medical records (Flight Surgeon mTLS) from anonymized open-science telemetry streams (NASA OSDR researchers).
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <button onclick="setPrivacyMode(false)" id="btnSurgeonView" class="w-full text-left p-2.5 rounded-xl border border-cyan-400/70 bg-cyan-500/10 text-xs transition cursor-pointer flex items-center justify-between">
+              <div>
+                <div class="font-semibold text-white">Flight Surgeon View [Identifiable PII]</div>
+                <div class="text-[11px] text-slate-400">Full crew names, medical history &amp; direct interventions</div>
+              </div>
+              <i class="fa-solid fa-circle-check text-cyan-400"></i>
+            </button>
+
+            <button onclick="setPrivacyMode(true)" id="btnResearcherView" class="w-full text-left p-2.5 rounded-xl border border-slate-800 bg-space-900 hover:border-slate-700 text-xs transition cursor-pointer flex items-center justify-between">
+              <div>
+                <div class="font-semibold text-slate-200">Researcher / OSDR View [Cryptographically Anonymized]</div>
+                <div class="text-[11px] text-slate-400">SHA-256 salted pseudonyms (e.g., SUBJ-ART4-01)</div>
+              </div>
+              <i class="fa-regular fa-circle text-slate-500"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
+        <span class="font-mono text-slate-400">Compliance: <span class="text-slate-200">NIST SP 800-53 • CCSDS 355.0-B-2 • HIPAA</span></span>
+        <button onclick="toggleSecurityModal(false)" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition cursor-pointer">
+          Close Security Console
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    // =========================================================================
+    // 1. ASTRONAUT CREW DATASET & BASELINE TELEMETRY
+    // =========================================================================
+    let crewData = [
+      {
+        id: 'vance',
+        name: 'Cmdr. Elena Vance',
+        anonId: 'SUBJ-ART4-01 [HASH: 7F3A]',
+        initials: 'EV',
+        anonInitials: 'S1',
+        role: 'Mission Commander',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'EVA Spacewalk (Airlock B)',
+        avatarBg: 'from-cyan-500 to-blue-600',
+        status: 'NOMINAL',
+        hr: 88,
+        spo2: 98.4,
+        resp: 17,
+        temp: 37.1,
+        hydration: 91,
+        radTotal: 124.6,
+        radRate: 0.94,
+        bpSys: 124,
+        bpDia: 78,
+        hrv: 58,
+        boneIndex: 97.8,
+        bmdLoss: '-1.4%',
+        aredQuota: '100% Quota',
+        sleepHours: 7.5,
+        iop: 15.1,
+        cogScore: 97,
+        suitPressure: 29.6, // Low-pressure EVA suit kPa
+        co2: 0.31,
+        suitStatus: 'EVA SUIT NOMINAL',
+        countermeasures: [
+          { id: 'c1', text: 'Verify EMU suit sublimator cooling loop flow (2.1 L/min)', done: true, effect: 'temp' },
+          { id: 'c2', text: 'Administer 350 mL electrolyte drink via in-suit drink bag', done: false, effect: 'hydration' },
+          { id: 'c3', text: 'Monitor EVA metabolic workload (< 300 kcal/hr threshold)', done: true, effect: 'hr' }
+        ]
+      },
+      {
+        id: 'thorne',
+        name: 'Dr. Marcus Thorne',
+        anonId: 'SUBJ-ART4-02 [HASH: 2B9E]',
+        initials: 'MT',
+        anonInitials: 'S2',
+        role: 'Flight Surgeon / Payload',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'Microgravity Exercise (ARED)',
+        avatarBg: 'from-emerald-500 to-teal-600',
+        status: 'ADVISORY',
+        hr: 118,
+        spo2: 97.6,
+        resp: 22,
+        temp: 37.5,
+        hydration: 84,
+        radTotal: 116.2,
+        radRate: 0.78,
+        bpSys: 136,
+        bpDia: 82,
+        hrv: 44,
+        boneIndex: 98.5,
+        bmdLoss: '-0.9%',
+        aredQuota: '115% Quota',
+        sleepHours: 7.2,
+        iop: 15.8,
+        cogScore: 95,
+        suitPressure: 101.3,
+        co2: 0.29,
+        suitStatus: 'HABITAT NODE 2',
+        countermeasures: [
+          { id: 't1', text: 'Complete post-ARED 500 mL sodium-potassium rehydration bolus', done: false, effect: 'hydration' },
+          { id: 't2', text: 'Initiate 5-minute parasympathetic recovery breathing protocol', done: false, effect: 'hr' },
+          { id: 't3', text: 'Log lumbar & femoral resistive load telemetry to NASA HRP', done: true, effect: 'bone' }
+        ]
+      },
+      {
+        id: 'sato',
+        name: 'Eng. Kenji Sato',
+        anonId: 'SUBJ-ART4-03 [HASH: 9D1C]',
+        initials: 'KS',
+        anonInitials: 'S3',
+        role: 'Flight Systems Engineer',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'ECLSS & Avionics Inspection',
+        avatarBg: 'from-amber-500 to-orange-600',
+        status: 'NOMINAL',
+        hr: 68,
+        spo2: 99.1,
+        resp: 13,
+        temp: 36.8,
+        hydration: 94,
+        radTotal: 121.0,
+        radRate: 0.81,
+        bpSys: 116,
+        bpDia: 74,
+        hrv: 71,
+        boneIndex: 96.9,
+        bmdLoss: '-2.1%',
+        aredQuota: '95% Quota',
+        sleepHours: 7.8,
+        iop: 14.9,
+        cogScore: 98,
+        suitPressure: 101.3,
+        co2: 0.26,
+        suitStatus: 'HABITAT CORE',
+        countermeasures: [
+          { id: 's1', text: 'Schedule 45-min ARED squat/deadlift session at 16:00 MET', done: false, effect: 'bone' },
+          { id: 's2', text: 'Daily Vitamin D3 (800 IU) & calcium citrate supplement', done: true, effect: 'bone' },
+          { id: 's3', text: 'Calibrate personal dosimeter badge against TEPC sensor', done: true, effect: 'rad' }
+        ]
+      },
+      {
+        id: 'lin',
+        name: 'Spec. Maya Lin',
+        anonId: 'SUBJ-ART4-04 [HASH: 4E8B]',
+        initials: 'ML',
+        anonInitials: 'S4',
+        role: 'Astrobiology Specialist',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'Circadian Sleep Cycle (Crew Qtrs)',
+        avatarBg: 'from-indigo-500 to-purple-600',
+        status: 'NOMINAL',
+        hr: 56,
+        spo2: 98.9,
+        resp: 12,
+        temp: 36.5,
+        hydration: 93,
+        radTotal: 112.8,
+        radRate: 0.76,
+        bpSys: 110,
+        bpDia: 68,
+        hrv: 82,
+        boneIndex: 97.5,
+        bmdLoss: '-1.5%',
+        aredQuota: '100% Quota',
+        sleepHours: 8.1,
+        iop: 16.4,
+        cogScore: 96,
+        suitPressure: 101.3,
+        co2: 0.25,
+        suitStatus: 'SLEEP BAY 1',
+        countermeasures: [
+          { id: 'l1', text: 'Maintain blue-depleted 450nm circadian lighting in sleep bay', done: true, effect: 'sleep' },
+          { id: 'l2', text: 'Perform Optical Coherence Tomography (OCT) SANS scan on wake', done: false, effect: 'sleep' },
+          { id: 'l3', text: 'Lower-body negative pressure (LBNP) fluid shift session', done: false, effect: 'hr' }
+        ]
+      }
+    ];
+
+    // Global State
+    let currentFrontendView = 'portal';
+    let selectedCrewId = 'vance';
+    let selectedBodyNode = 'cardio';
+    let isStreaming = true;
+    let activeAnomaly = null;
+    let missionSeconds = 142 * 86400 + 18 * 3600 + 42 * 60 + 10;
+    let anomalyScenarioIndex = 0;
+
+    // Frontend Multi-View Switcher
+    function switchFrontendView(viewName) {
+      currentFrontendView = viewName;
+      const views = ['portal', 'dashboard', 'crew-profiles', 'mission-brief'];
+
+      views.forEach(v => {
+        const section = document.getElementById(`view-${v}`);
+        const navBtn = document.getElementById(`nav-${v}`);
+        if (section) {
+          if (v === viewName) {
+            section.classList.remove('hidden');
+          } else {
+            section.classList.add('hidden');
+          }
+        }
+        if (navBtn) {
+          if (v === viewName) {
+            navBtn.className = 'frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-cyan-500/15 text-cyan-300 border border-cyan-400/50';
+          } else {
+            navBtn.className = 'frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-space-850/80 text-slate-400 hover:text-slate-200 border border-slate-800';
+          }
+        }
+      });
+
+      if (viewName === 'dashboard') {
+        setTimeout(() => resizeEcgCanvas(), 20);
+      }
+      renderAll();
+    }
+
+    // Security & Privacy State
+    let isAnonymizedView = false;
+    let sessionKeyEpoch = 14;
+    let sessionKeyShort = 'SDLS-K256-8F9A';
+    let sessionKeyFull = 'SDLS-K256-8F9A-2026';
+    let frameCounter = 48920;
+
+    // Anomaly Scenarios for Simulation
+    const anomalyScenarios = [
+      {
+        type: 'EVA_DECOMP',
+        title: 'ALERT: EVA SUIT PRESSURE DROP & TACHYCARDIA SPIKE',
+        desc: 'Micro-meteoroid suit seal leak detected. Heart rate surging and SpO2 trending downward.',
+        apply: (crew) => {
+          crew.status = 'ALERT';
+          crew.hr = 148;
+          crew.spo2 = 91.2;
+          crew.resp = 28;
+          crew.suitPressure = 21.4;
+          crew.suitStatus = 'PRESSURE DROP!';
+          crew.bpSys = 152;
+          crew.bpDia = 94;
+          crew.countermeasures = [
+            { id: 'a1', text: 'ACTIVATE SECONDARY OXYGEN PACK (SOP) & ABORT EVA TO AIRLOCK', done: false, fixKey: 'pressure' },
+            { id: 'a2', text: 'Increase Suit ppO2 enrichment to 100% O2 purge', done: false, fixKey: 'spo2' },
+            { id: 'a3', text: 'Initiate guided vagal breathing & terminate physical exertion', done: false, fixKey: 'hr' }
+          ];
+        }
+      },
+      {
+        type: 'SOLAR_SPE',
+        title: 'WARNING: SOLAR PARTICLE EVENT (SPE) RADIATION SURGE',
+        desc: 'Coronal Mass Ejection flux detected by Gateway radiation monitors. Dose rate spiking above nominal.',
+        apply: (crew) => {
+          crew.status = 'ALERT';
+          crew.radRate = 4.65;
+          crew.radTotal = +(crew.radTotal + 3.2).toFixed(1);
+          crew.hr = Math.min(132, crew.hr + 22);
+          crew.temp = 37.6;
+          crew.countermeasures = [
+            { id: 'r1', text: 'RELOCATE CREW TO WATER-WALL STORM SHELTER MODULE IMMEDIATELY', done: false, fixKey: 'rad' },
+            { id: 'r2', text: 'Administer radioprotectant antioxidant & hydration protocol', done: false, fixKey: 'hydration' },
+            { id: 'r3', text: 'Switch habitat avionics to radiation-hardened safe mode', done: false, fixKey: 'hr' }
+          ];
+        }
+      },
+      {
+        type: 'DEHYDRATION_ORTHO',
+        title: 'ADVISORY ALERT: ACUTE MICROGRAVITY DEHYDRATION & HYPERTHERMIA',
+        desc: 'Elevated core temperature and plasma volume contraction detected post-exertion.',
+        apply: (crew) => {
+          crew.status = 'ALERT';
+          crew.hydration = 74;
+          crew.temp = 38.4;
+          crew.hr = 134;
+          crew.bpSys = 98;
+          crew.bpDia = 62;
+          crew.countermeasures = [
+            { id: 'd1', text: 'Administer 750 mL isotonic electrolyte & glucose solution', done: false, fixKey: 'hydration' },
+            { id: 'd2', text: 'Set Liquid Cooling & Ventilation Garment (LCVG) to MAX cool', done: false, fixKey: 'temp' },
+            { id: 'd3', text: 'Monitor orthostatic blood pressure recovery for 15 minutes', done: false, fixKey: 'hr' }
+          ];
+        }
+      }
+    ];
+
+    // Helper: Get currently selected astronaut object
+    function getCurrentCrew() {
+      return crewData.find(c => c.id === selectedCrewId);
+    }
+
+    // Helper: Return display name respecting HIPAA / NASA Privacy Act RBAC mode
+    function getCrewDisplayName(member) {
+      return isAnonymizedView ? member.anonId : member.name;
+    }
+
+    // Helper: Append timestamped message to Flight Surgeon Console Log
+    function addLog(message, level = 'info') {
+      const logBox = document.getElementById('eventLogBox');
+      const now = new Date();
+      const ts = now.toISOString().substring(11, 19) + ' UTC';
+      const colorClass =
+        level === 'alert' ? 'text-rose-400' :
+        level === 'success' ? 'text-emerald-400' :
+        level === 'warn' ? 'text-amber-300' : 'text-slate-300';
+
+      const entry = document.createElement('div');
+      entry.className = `${colorClass} leading-snug`;
+      entry.innerHTML = `<span class="text-slate-500">[${ts}]</span> ${message}`;
+      logBox.prepend(entry);
+      if (typeof syncMissionControlToBackend === 'function') {
+        syncMissionControlToBackend({ timestamp: ts, message, level });
+      }
+    }
+
+    // =========================================================================
+    // 2. RENDER CREW SELECTOR CARDS
+    // =========================================================================
+    function renderCrewSelector() {
+      const container = document.getElementById('crewSelectorGrid');
+      container.innerHTML = '';
+
+      crewData.forEach(member => {
+        const isSelected = member.id === selectedCrewId;
+        const badgeStyles =
+          member.status === 'ALERT'
+            ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse'
+            : member.status === 'ADVISORY'
+            ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+            : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40';
+
+        const cardBorder = isSelected
+          ? 'bg-space-850 border-cyan-400/80 shadow-lg shadow-cyan-500/10'
+          : 'bg-space-900/80 border-slate-800 hover:border-slate-700';
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.onclick = () => {
+          selectedCrewId = member.id;
+          renderAll();
+          addLog(`Switched telemetry downlink to ${getCrewDisplayName(member)} (${member.activity}).`);
+        };
+        card.className = `text-left rounded-2xl p-3.5 border transition-all cursor-pointer flex items-center justify-between gap-3 ${cardBorder}`;
+
+        const displayName = getCrewDisplayName(member);
+        const displayRole = isAnonymizedView ? member.anonRole : member.role;
+        const displayInitials = isAnonymizedView ? member.anonInitials : member.initials;
+
+        card.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-br ${member.avatarBg} flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-inner">
+              ${displayInitials}
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="font-semibold text-sm text-white truncate">${displayName}</p>
+              </div>
+              <p class="text-[11px] text-slate-400 truncate">${displayRole}</p>
+              <p class="text-[11px] font-mono text-cyan-300/90 truncate mt-0.5">${member.activity}</p>
+            </div>
+          </div>
+          <div class="flex flex-col items-end shrink-0 gap-1.5">
+            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${badgeStyles}">
+              ${member.status}
+            </span>
+            <span class="text-xs font-mono text-slate-300 font-semibold">${Math.round(member.hr)} <span class="text-[10px] text-slate-500">BPM</span></span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // =========================================================================
+    // 3. RENDER BIOMETRIC TELEMETRY CARDS
+    // =========================================================================
+    function renderTelemetryCards() {
+      const c = getCurrentCrew();
+
+      // Heart Rate
+      document.getElementById('val-hr').textContent = Math.round(c.hr);
+      document.getElementById('trend-hr').textContent = `HRV: ${c.hrv}ms`;
+      const cardHr = document.getElementById('card-hr');
+      const statusHr = document.getElementById('status-hr');
+      if (c.hr > 125) {
+        cardHr.classList.add('alert-border-pulse');
+        statusHr.className = 'text-rose-400 font-semibold';
+        statusHr.textContent = '▲ TACHYCARDIA ALERT';
+      } else if (c.hr > 105) {
+        cardHr.classList.remove('alert-border-pulse');
+        statusHr.className = 'text-amber-400';
+        statusHr.textContent = '▲ ELEVATED (EXERTION)';
+      } else {
+        cardHr.classList.remove('alert-border-pulse');
+        statusHr.className = 'text-emerald-400';
+        statusHr.textContent = '● NOMINAL (60-100)';
+      }
+
+      // SpO2 & Respiration
+      document.getElementById('val-spo2').textContent = c.spo2.toFixed(1);
+      document.getElementById('val-resp').textContent = Math.round(c.resp);
+      const cardSpo2 = document.getElementById('card-spo2');
+      const statusSpo2 = document.getElementById('status-spo2');
+      if (c.spo2 < 94) {
+        cardSpo2.classList.add('alert-border-pulse');
+        statusSpo2.className = 'text-rose-400 font-semibold';
+        statusSpo2.textContent = '▼ HYPOXIA WARNING';
+      } else {
+        cardSpo2.classList.remove('alert-border-pulse');
+        statusSpo2.className = 'text-emerald-400';
+        statusSpo2.textContent = '● O2 SAT OPTIMAL';
+      }
+
+      // Temp & Hydration
+      document.getElementById('val-temp').textContent = c.temp.toFixed(1);
+      document.getElementById('val-hydro').textContent = Math.round(c.hydration);
+      const cardTemp = document.getElementById('card-temp');
+      const statusTemp = document.getElementById('status-temp');
+      if (c.temp > 37.9 || c.hydration < 80) {
+        cardTemp.classList.add('alert-border-pulse');
+        statusTemp.className = 'text-rose-400 font-semibold';
+        statusTemp.textContent = '▲ THERMAL / H2O ALERT';
+      } else if (c.hydration < 86) {
+        cardTemp.classList.remove('alert-border-pulse');
+        statusTemp.className = 'text-amber-400';
+        statusTemp.textContent = '● MILD DEHYDRATION';
+      } else {
+        cardTemp.classList.remove('alert-border-pulse');
+        statusTemp.className = 'text-emerald-400';
+        statusTemp.textContent = '● THERMOREGULATED';
+      }
+
+      // Radiation
+      document.getElementById('val-rad').textContent = c.radTotal.toFixed(1);
+      document.getElementById('val-rad-rate').textContent = `${c.radRate.toFixed(2)} mSv/d`;
+      const radPct = Math.min(100, (c.radTotal / 600) * 100);
+      document.getElementById('bar-rad').style.width = `${radPct.toFixed(1)}%`;
+      document.getElementById('pct-rad').textContent = `${radPct.toFixed(1)}%`;
+      const cardRad = document.getElementById('card-rad');
+      if (c.radRate > 2.0) {
+        cardRad.classList.add('alert-border-pulse');
+      } else {
+        cardRad.classList.remove('alert-border-pulse');
+      }
+
+      // Secondary Cards
+      document.getElementById('val-bp').textContent = `${Math.round(c.bpSys)}/${Math.round(c.bpDia)} mmHg`;
+      document.getElementById('val-bone').textContent = `${c.boneIndex}%`;
+      document.getElementById('val-bmd-sub').textContent = c.bmdLoss;
+      document.getElementById('val-ared').textContent = c.aredQuota;
+      document.getElementById('val-sleep').textContent = `${c.sleepHours}h / 8h`;
+      document.getElementById('val-iop').textContent = `${c.iop} mmHg`;
+      document.getElementById('val-cog').textContent = `${c.cogScore} / 100`;
+      document.getElementById('val-pressure').textContent = `${c.suitPressure.toFixed(1)} kPa`;
+      document.getElementById('val-co2').textContent = `${c.co2.toFixed(2)} kPa`;
+
+      const suitStatusEl = document.getElementById('val-suit-status');
+      suitStatusEl.textContent = c.suitStatus;
+      if (c.suitPressure < 25) {
+        suitStatusEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse';
+      } else {
+        suitStatusEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+      }
+
+      // ECG Rhythm Banner
+      const ecgRhythmLabel = document.getElementById('ecgRhythmLabel');
+      if (c.hr > 130) {
+        ecgRhythmLabel.textContent = 'SINUS TACHYCARDIA // ELEVATED';
+        ecgRhythmLabel.className = 'absolute bottom-2.5 right-3 text-[11px] font-mono px-2 py-0.5 rounded bg-rose-950/90 border border-rose-500/60 text-rose-300 pointer-events-none';
+      } else {
+        ecgRhythmLabel.textContent = 'SINUS RHYTHM // NORMAL';
+        ecgRhythmLabel.className = 'absolute bottom-2.5 right-3 text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900/90 border border-slate-700 text-emerald-400 pointer-events-none';
+      }
+    }
+
+    // =========================================================================
+    // 4. INTERACTIVE ANATOMICAL BIOMETRIC NODE INSPECTOR
+    // =========================================================================
+    function selectBodyNode(nodeKey) {
+      selectedBodyNode = nodeKey;
+      renderBodyNodeDetails();
+    }
+
+    function renderBodyNodeDetails() {
+      const c = getCurrentCrew();
+      const panel = document.getElementById('nodeDetailPanel');
+
+      const nodeConfigs = {
+        cardio: {
+          title: 'Cardiovascular Array',
+          sensor: 'Bio-Harness Lead-II + PPG',
+          color: 'text-cyan-400',
+          badge: c.hr > 125 ? 'ALERT' : 'OPTIMAL',
+          stats: [
+            { label: 'Heart Rate', value: `${Math.round(c.hr)} BPM` },
+            { label: 'Blood Pressure', value: `${Math.round(c.bpSys)}/${Math.round(c.bpDia)} mmHg` },
+            { label: 'RMSSD HRV', value: `${c.hrv} ms` }
+          ],
+          note: 'Microgravity cephalad fluid shift monitored via thoracic impedance.'
+        },
+        neural: {
+          title: 'Neuro-Ocular & SANS',
+          sensor: 'EEG Headband + Tonometry',
+          color: 'text-indigo-400',
+          badge: c.iop > 18 ? 'ELEVATED' : 'NOMINAL',
+          stats: [
+            { label: 'Intraocular Press.', value: `${c.iop} mmHg` },
+            { label: 'Sleep Efficiency', value: `${c.sleepHours} hrs` },
+            { label: 'Psychomotor Vigilance', value: `${c.cogScore}%` }
+          ],
+          note: 'Screening for optic disc edema & intracranial pressure shifts.'
+        },
+        eclss: {
+          title: 'Suit / Cabin ECLSS',
+          sensor: 'EMU / Node Telemetry Bus',
+          color: 'text-amber-400',
+          badge: c.suitPressure < 25 ? 'LEAK ALERT' : 'SEALED',
+          stats: [
+            { label: 'Total Pressure', value: `${c.suitPressure.toFixed(1)} kPa` },
+            { label: 'SpO2 / O2 Sat', value: `${c.spo2.toFixed(1)}%` },
+            { label: 'ppCO2 Scrubbing', value: `${c.co2.toFixed(2)} kPa` }
+          ],
+          note: 'Closed-loop oxygen generation and trace contaminant control nominal.'
+        },
+        metabolic: {
+          title: 'Hydration & Metabolic',
+          sensor: 'Sweat Patch + Core Pill',
+          color: 'text-emerald-400',
+          badge: c.hydration < 80 ? 'LOW H2O' : 'BALANCED',
+          stats: [
+            { label: 'Total Body Water', value: `${Math.round(c.hydration)}%` },
+            { label: 'Core Temperature', value: `${c.temp.toFixed(1)} °C` },
+            { label: 'Electrolyte Na+', value: '141 mmol/L' }
+          ],
+          note: 'Continuous sweat sodium & core thermoregulation telemetry.'
+        },
+        musculo: {
+          title: 'Musculoskeletal & Dosimetry',
+          sensor: 'ARED Load Cell + TEPC',
+          color: 'text-purple-400',
+          badge: c.radRate > 2.0 ? 'SPE SURGE' : 'PROTECTED',
+          stats: [
+            { label: 'BMD Retention', value: `${c.boneIndex}%` },
+            { label: 'Cumulative Dose', value: `${c.radTotal.toFixed(1)} mSv` },
+            { label: 'Current Flux', value: `${c.radRate.toFixed(2)} mSv/d` }
+          ],
+          note: 'Resistive exercise & bone resorption biomarkers within HRP limits.'
+        }
+      };
+
+      const cfg = nodeConfigs[selectedBodyNode];
+      const badgeColor =
+        cfg.badge.includes('ALERT') || cfg.badge.includes('SURGE') || cfg.badge.includes('LOW')
+          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+          : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+
+      panel.innerHTML = `
+        <div>
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="text-xs font-bold ${cfg.color}">${cfg.title}</span>
+            <span class="text-[9px] font-mono px-1.5 py-0.5 rounded border ${badgeColor}">${cfg.badge}</span>
+          </div>
+          <p class="text-[10px] font-mono text-slate-400 mb-2.5">${cfg.sensor}</p>
+          <div class="space-y-1.5">
+            ${cfg.stats.map(s => `
+              <div class="flex items-center justify-between bg-space-900/90 border border-slate-800/90 rounded-lg px-2.5 py-1.5 text-[11px] font-mono">
+                <span class="text-slate-400">${s.label}</span>
+                <span class="text-white font-semibold">${s.value}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-400 leading-tight border-t border-slate-800/80 pt-2">
+          ${cfg.note}
+        </p>
+      `;
+    }
+
+    // =========================================================================
+    // 5. AI FLIGHT SURGEON COUNTERMEASURES & INTERACTIVE STABILIZATION
+    // =========================================================================
+    function renderCountermeasures() {
+      const c = getCurrentCrew();
+      const list = document.getElementById('countermeasureList');
+      list.innerHTML = '';
+
+      c.countermeasures.forEach(item => {
+        const row = document.createElement('label');
+        row.className = `flex items-start gap-3 p-2.5 rounded-xl border transition cursor-pointer ${
+          item.done
+            ? 'bg-emerald-950/20 border-emerald-500/30 text-slate-400'
+            : 'bg-space-950/90 border-slate-800 hover:border-cyan-500/40 text-slate-200'
+        }`;
+
+        row.innerHTML = `
+          <input type="checkbox" ${item.done ? 'checked' : ''} class="mt-0.5 w-4 h-4 rounded accent-cyan-400 cursor-pointer shrink-0" />
+          <span class="text-xs leading-snug ${item.done ? 'line-through text-slate-500' : ''}">${item.text}</span>
+        `;
+
+        const checkbox = row.querySelector('input');
+        checkbox.addEventListener('change', () => {
+          item.done = checkbox.checked;
+          if (item.done) {
+            applyCountermeasureEffect(c, item);
+            addLog(`Executed protocol for ${getCrewDisplayName(c)}: "${item.text.slice(0, 48)}..."`, 'success');
+          }
+          renderAll();
+          if (typeof syncCrewMemberToBackend === 'function') syncCrewMemberToBackend(c);
+        });
+
+        list.appendChild(row);
+      });
+    }
+
+    function applyCountermeasureEffect(crew, item) {
+      // Stabilize specific vital signs when Flight Surgeon checks off interventions
+      if (item.effect === 'hydration' || item.fixKey === 'hydration') {
+        crew.hydration = Math.min(95, crew.hydration + 10);
+        crew.temp = Math.max(36.8, +(crew.temp - 0.5).toFixed(1));
+      }
+      if (item.effect === 'hr' || item.fixKey === 'hr') {
+        crew.hr = Math.max(72, crew.hr - 26);
+        crew.bpSys = Math.max(118, crew.bpSys - 14);
+        crew.bpDia = Math.max(74, crew.bpDia - 8);
+      }
+      if (item.fixKey === 'pressure') {
+        crew.suitPressure = 29.6;
+        crew.suitStatus = 'SOP ACTIVE // SEALED';
+      }
+      if (item.fixKey === 'spo2') {
+        crew.spo2 = 98.5;
+        crew.resp = 16;
+      }
+      if (item.fixKey === 'rad') {
+        crew.radRate = 0.85;
+      }
+      if (item.fixKey === 'temp') {
+        crew.temp = 36.9;
+      }
+
+      // Check if all anomaly countermeasures are completed
+      const allDone = crew.countermeasures.every(m => m.done);
+      if (allDone && crew.status === 'ALERT') {
+        crew.status = 'NOMINAL';
+        activeAnomaly = null;
+        document.getElementById('anomalyBanner').classList.add('hidden');
+        addLog(`ALL COUNTERMEASURES VERIFIED: ${getCrewDisplayName(crew)} vitals stabilized to NOMINAL.`, 'success');
+      } else if (allDone && crew.status === 'ADVISORY') {
+        crew.status = 'NOMINAL';
+      }
+    }
+
+    // =========================================================================
+    // 6. ANOMALY SIMULATION & STREAM CONTROLS
+    // =========================================================================
+    function triggerAnomaly() {
+      const crew = getCurrentCrew();
+      const scenario = anomalyScenarios[anomalyScenarioIndex % anomalyScenarios.length];
+      anomalyScenarioIndex++;
+
+      scenario.apply(crew);
+      activeAnomaly = scenario;
+
+      const banner = document.getElementById('anomalyBanner');
+      document.getElementById('anomalyTitle').textContent = `${scenario.title} — [${getCrewDisplayName(crew).toUpperCase()}]`;
+      document.getElementById('anomalyDesc').textContent = scenario.desc;
+      banner.classList.remove('hidden');
+
+      addLog(`ANOMALY INJECTED (${getCrewDisplayName(crew)}): ${scenario.title}`, 'alert');
+      renderAll();
+      if (typeof syncCrewMemberToBackend === 'function') syncCrewMemberToBackend(crew);
+      if (typeof syncMissionControlToBackend === 'function') syncMissionControlToBackend();
+    }
+
+    function resolveAllAnomalies() {
+      const crew = getCurrentCrew();
+      crew.status = 'NOMINAL';
+      crew.hr = 76;
+      crew.spo2 = 98.7;
+      crew.resp = 15;
+      crew.temp = 36.9;
+      crew.hydration = 93;
+      crew.radRate = 0.82;
+      crew.bpSys = 118;
+      crew.bpDia = 76;
+      crew.suitPressure = crew.id === 'vance' ? 29.6 : 101.3;
+      crew.suitStatus = crew.id === 'vance' ? 'EVA SUIT NOMINAL' : 'HABITAT NOMINAL';
+      crew.countermeasures.forEach(m => (m.done = true));
+
+      activeAnomaly = null;
+      document.getElementById('anomalyBanner').classList.add('hidden');
+      addLog(`Flight Surgeon manual override: ${getCrewDisplayName(crew)} telemetry restored to baseline.`, 'success');
+      renderAll();
+      if (typeof syncCrewMemberToBackend === 'function') syncCrewMemberToBackend(crew);
+      if (typeof syncMissionControlToBackend === 'function') syncMissionControlToBackend();
+    }
+
+    function toggleStream() {
+      isStreaming = !isStreaming;
+      const icon = document.getElementById('streamIcon');
+      const label = document.getElementById('streamLabel');
+      const badge = document.getElementById('ecgLiveBadge');
+
+      if (isStreaming) {
+        icon.className = 'fa-solid fa-pause text-cyan-400';
+        label.textContent = 'Live Stream';
+        badge.textContent = '250 Hz STREAM';
+        badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30';
+        addLog('Resumed live deep-space telemetry downlink.');
+      } else {
+        icon.className = 'fa-solid fa-play text-amber-400';
+        label.textContent = 'Paused';
+        badge.textContent = 'BUFFER FROZEN';
+        badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30';
+        addLog('Telemetry stream paused for waveform inspection.', 'warn');
+      }
+    }
+
+    function toggleProjectModal(show) {
+      const modal = document.getElementById('projectModal');
+      if (show) {
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function toggleSecurityModal(show) {
+      const modal = document.getElementById('securityModal');
+      if (show) {
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    // Interactive Session Key Rotation (CCSDS SDLS + ML-KEM Hybrid Re-key)
+    function rotateSessionKey() {
+      sessionKeyEpoch++;
+      const hexPart = Math.floor(0x1000 + Math.random() * 0xefff).toString(16).toUpperCase();
+      sessionKeyShort = `SDLS-K256-${hexPart}`;
+      sessionKeyFull = `SDLS-K256-${hexPart}-2026`;
+
+      const widgetKeyEl = document.getElementById('widgetKeyId');
+      const modalKeyEl = document.getElementById('modalKeyId');
+      const modalAgeEl = document.getElementById('modalKeyAge');
+      const modalKeyCard = document.getElementById('modalKeyCard');
+      const rotateIcon = document.getElementById('rotateKeyIcon');
+
+      if (widgetKeyEl) widgetKeyEl.textContent = sessionKeyShort;
+      if (modalKeyEl) modalKeyEl.textContent = sessionKeyFull;
+      if (modalAgeEl) modalAgeEl.textContent = `Epoch #${sessionKeyEpoch} • Just Rotated`;
+
+      if (rotateIcon) {
+        rotateIcon.classList.add('animate-spin');
+        setTimeout(() => rotateIcon.classList.remove('animate-spin'), 700);
+      }
+
+      if (modalKeyCard) {
+        modalKeyCard.classList.add('border-emerald-400', 'bg-emerald-950/30');
+        setTimeout(() => {
+          modalKeyCard.classList.remove('border-emerald-400', 'bg-emerald-950/30');
+        }, 1200);
+      }
+
+      addLog(`CRYPTO RE-KEY: Rotated SDLS AES-256-GCM session key to ${sessionKeyFull} via ML-KEM-1024.`, 'success');
+    }
+
+    // Toggle HIPAA / NASA Privacy Act RBAC Anonymization Mode
+    function togglePrivacyMode() {
+      setPrivacyMode(!isAnonymizedView);
+    }
+
+    function setPrivacyMode(anonymize) {
+      isAnonymizedView = anonymize;
+
+      // Update Widget Button
+      const rbacLabel = document.getElementById('rbacLabel');
+      const rbacIcon = document.getElementById('rbacIcon');
+      const modalRbacBadge = document.getElementById('modalRbacBadge');
+      const btnSurgeon = document.getElementById('btnSurgeonView');
+      const btnResearcher = document.getElementById('btnResearcherView');
+
+      if (isAnonymizedView) {
+        if (rbacLabel) rbacLabel.textContent = 'OSDR Anon [Masked]';
+        if (rbacIcon) rbacIcon.className = 'fa-solid fa-mask text-purple-400';
+        if (modalRbacBadge) {
+          modalRbacBadge.textContent = 'OSDR ANONYMIZED';
+          modalRbacBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/40';
+        }
+        if (btnSurgeon) {
+          btnSurgeon.className = 'w-full text-left p-2.5 rounded-xl border border-slate-800 bg-space-900 hover:border-slate-700 text-xs transition cursor-pointer flex items-center justify-between';
+          btnSurgeon.querySelector('i').className = 'fa-regular fa-circle text-slate-500';
+        }
+        if (btnResearcher) {
+          btnResearcher.className = 'w-full text-left p-2.5 rounded-xl border border-purple-400/70 bg-purple-500/10 text-xs transition cursor-pointer flex items-center justify-between';
+          btnResearcher.querySelector('i').className = 'fa-solid fa-circle-check text-purple-400';
+        }
+        addLog('PRIVACY RBAC: Switched to NASA OSDR Researcher View — Crew PII cryptographically masked.', 'warn');
+      } else {
+        if (rbacLabel) rbacLabel.textContent = 'Surgeon View [PII]';
+        if (rbacIcon) rbacIcon.className = 'fa-solid fa-user-shield text-cyan-400';
+        if (modalRbacBadge) {
+          modalRbacBadge.textContent = 'SURGEON PII';
+          modalRbacBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/40';
+        }
+        if (btnSurgeon) {
+          btnSurgeon.className = 'w-full text-left p-2.5 rounded-xl border border-cyan-400/70 bg-cyan-500/10 text-xs transition cursor-pointer flex items-center justify-between';
+          btnSurgeon.querySelector('i').className = 'fa-solid fa-circle-check text-cyan-400';
+        }
+        if (btnResearcher) {
+          btnResearcher.className = 'w-full text-left p-2.5 rounded-xl border border-slate-800 bg-space-900 hover:border-slate-700 text-xs transition cursor-pointer flex items-center justify-between';
+          btnResearcher.querySelector('i').className = 'fa-regular fa-circle text-slate-500';
+        }
+        addLog('PRIVACY RBAC: Authenticated Flight Surgeon mTLS session — Identifiable crew PII unlocked.', 'info');
+      }
+
+      // Update active anomaly banner name if visible
+      if (activeAnomaly) {
+        const crew = getCurrentCrew();
+        document.getElementById('anomalyTitle').textContent = `${activeAnomaly.title} — [${getCrewDisplayName(crew).toUpperCase()}]`;
+      }
+
+      renderAll();
+      if (typeof syncMissionControlToBackend === 'function') syncMissionControlToBackend();
+    }
+
+    // =========================================================================
+    // 7. REAL-TIME ECG & PLETHYSMOGRAPH CANVAS RENDERER
+    // =========================================================================
+    const ecgCanvas = document.getElementById('ecgCanvas');
+    const ecgCtx = ecgCanvas.getContext('2d');
+    let ecgPhase = 0;
+    let ecgHistory = [];
+    let plethHistory = [];
+
+    function resizeEcgCanvas() {
+      const container = document.getElementById('ecgContainer');
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      ecgCanvas.width = rect.width * dpr;
+      ecgCanvas.height = rect.height * dpr;
+      ecgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const targetLen = Math.max(120, Math.floor(rect.width / 2));
+      if (ecgHistory.length !== targetLen) {
+        ecgHistory = new Array(targetLen).fill(0);
+        plethHistory = new Array(targetLen).fill(0);
+      }
+    }
+
+    // Synthesize realistic P-QRS-T cardiac waveform based on current crew BPM
+    function sampleEcgWaveform(phase) {
+      // phase in [0, 1) per heartbeat
+      if (phase > 0.10 && phase < 0.18) {
+        // P wave
+        return 0.16 * Math.sin(((phase - 0.10) / 0.08) * Math.PI);
+      } else if (phase >= 0.22 && phase < 0.25) {
+        // Q dip
+        return -0.18 * Math.sin(((phase - 0.22) / 0.03) * Math.PI);
+      } else if (phase >= 0.25 && phase < 0.30) {
+        // R peak (sharp spike)
+        return 1.0 * Math.sin(((phase - 0.25) / 0.05) * Math.PI);
+      } else if (phase >= 0.30 && phase < 0.34) {
+        // S dip
+        return -0.32 * Math.sin(((phase - 0.30) / 0.04) * Math.PI);
+      } else if (phase >= 0.44 && phase < 0.60) {
+        // T wave
+        return 0.28 * Math.sin(((phase - 0.44) / 0.16) * Math.PI);
+      }
+      return (Math.random() - 0.5) * 0.025; // subtle baseline sensor noise
+    }
+
+    function samplePlethWaveform(phase) {
+      // Delayed arterial pulse wave
+      const p = (phase + 0.82) % 1;
+      return 0.35 * Math.sin(p * Math.PI * 2) * Math.exp(-p * 1.4);
+    }
+
+    let lastFrameTime = performance.now();
+    function animateEcg(now) {
+      const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+
+      const c = getCurrentCrew();
+      const width = ecgCanvas.width / (window.devicePixelRatio || 1);
+      const height = ecgCanvas.height / (window.devicePixelRatio || 1);
+
+      if (isStreaming) {
+        const beatsPerSec = c.hr / 60;
+        const steps = 3;
+        for (let i = 0; i < steps; i++) {
+          ecgPhase = (ecgPhase + (beatsPerSec * dt) / steps) % 1;
+          ecgHistory.push(sampleEcgWaveform(ecgPhase));
+          plethHistory.push(samplePlethWaveform(ecgPhase));
+          if (ecgHistory.length > Math.floor(width / 2)) {
+            ecgHistory.shift();
+            plethHistory.shift();
+          }
+        }
+      }
+
+      // Clear & Draw Telemetry Grid
+      ecgCtx.clearRect(0, 0, width, height);
+      ecgCtx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
+      ecgCtx.lineWidth = 1;
+      const gridStep = 24;
+      for (let x = 0; x < width; x += gridStep) {
+        ecgCtx.beginPath();
+        ecgCtx.moveTo(x, 0);
+        ecgCtx.lineTo(x, height);
+        ecgCtx.stroke();
+      }
+      for (let y = 0; y < height; y += gridStep) {
+        ecgCtx.beginPath();
+        ecgCtx.moveTo(0, y);
+        ecgCtx.lineTo(width, y);
+        ecgCtx.stroke();
+      }
+
+      // Draw SpO2 Plethysmograph (Bottom trace)
+      const plethBaseline = height * 0.78;
+      const plethAmp = height * 0.14;
+      ecgCtx.beginPath();
+      ecgCtx.strokeStyle = 'rgba(52, 211, 153, 0.65)';
+      ecgCtx.lineWidth = 1.6;
+      plethHistory.forEach((val, idx) => {
+        const x = (idx / Math.max(1, plethHistory.length - 1)) * width;
+        const y = plethBaseline - val * plethAmp;
+        if (idx === 0) ecgCtx.moveTo(x, y);
+        else ecgCtx.lineTo(x, y);
+      });
+      ecgCtx.stroke();
+
+      // Draw Lead-II ECG (Main trace)
+      const ecgBaseline = height * 0.44;
+      const ecgAmp = height * 0.30;
+      const isAlert = c.hr > 130;
+      ecgCtx.beginPath();
+      ecgCtx.strokeStyle = isAlert ? '#fb7185' : '#22d3ee';
+      ecgCtx.lineWidth = 2.2;
+      ecgCtx.shadowColor = isAlert ? 'rgba(251, 113, 133, 0.55)' : 'rgba(34, 211, 238, 0.55)';
+      ecgCtx.shadowBlur = 8;
+
+      ecgHistory.forEach((val, idx) => {
+        const x = (idx / Math.max(1, ecgHistory.length - 1)) * width;
+        const y = ecgBaseline - val * ecgAmp;
+        if (idx === 0) ecgCtx.moveTo(x, y);
+        else ecgCtx.lineTo(x, y);
+      });
+      ecgCtx.stroke();
+      ecgCtx.shadowBlur = 0;
+
+      // Glowing Leading Dot
+      if (ecgHistory.length > 0) {
+        const lastY = ecgBaseline - ecgHistory[ecgHistory.length - 1] * ecgAmp;
+        ecgCtx.fillStyle = isAlert ? '#fda4af' : '#a5f3fc';
+        ecgCtx.beginPath();
+        ecgCtx.arc(width - 2, lastY, 3.5, 0, Math.PI * 2);
+        ecgCtx.fill();
+      }
+
+      requestAnimationFrame(animateEcg);
+    }
+
+    // =========================================================================
+    // 8. LIVE TELEMETRY MICRO-JITTER & MISSION CLOCK LOOP
+    // =========================================================================
+    setInterval(() => {
+      if (!isStreaming) return;
+
+      // Increment Mission Elapsed Time (MET)
+      missionSeconds++;
+      const d = Math.floor(missionSeconds / 86400);
+      const h = Math.floor((missionSeconds % 86400) / 3600);
+      const m = Math.floor((missionSeconds % 3600) / 60);
+      const s = missionSeconds % 60;
+      document.getElementById('missionClock').textContent =
+        `${d}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+
+      // Subtle physiological micro-variations for active crew
+      crewData.forEach(member => {
+        const jitter = (Math.random() - 0.5) * 1.6;
+        member.hr = Math.max(50, Math.min(165, member.hr + jitter));
+        member.spo2 = Math.max(89.0, Math.min(99.8, +(member.spo2 + (Math.random() - 0.5) * 0.12).toFixed(1)));
+        member.radTotal = +(member.radTotal + member.radRate / 86400).toFixed(2);
+      });
+
+      // Update live GCM Packet Checksum stream
+      frameCounter++;
+      const hashA = Math.floor(0x1000 + Math.random() * 0xefff).toString(16).toUpperCase();
+      const hashB = Math.floor(0x1000 + Math.random() * 0xefff).toString(16).toUpperCase();
+      const widgetChecksum = document.getElementById('widgetChecksum');
+      const modalChecksum = document.getElementById('modalChecksum');
+      const modalPacketStream = document.getElementById('modalPacketStream');
+      if (widgetChecksum) widgetChecksum.textContent = `100% • 0x${hashA}`;
+      if (modalChecksum) modalChecksum.textContent = `0x${hashA}...${hashB}`;
+      if (modalPacketStream) modalPacketStream.textContent = `FRAME #${frameCounter} [GCM TAG 0x${hashA} VERIFIED]`;
+
+      renderCrewSelector();
+      renderTelemetryCards();
+    }, 1000);
+
+    function renderAll() {
+      const activeCrew = getCurrentCrew();
+      const navCrewLabel = document.getElementById('navActiveCrewLabel');
+      if (navCrewLabel && activeCrew) {
+        navCrewLabel.textContent = getCrewDisplayName(activeCrew);
+      }
+
+      renderPortalCrewPreviews();
+      renderCrewReadinessCards();
+      renderCrewSelector();
+      renderTelemetryCards();
+      renderBodyNodeDetails();
+      renderCountermeasures();
+    }
+
+    // Render Live Crew Snapshot Cards on Frontend Portal
+    function renderPortalCrewPreviews() {
+      const grid = document.getElementById('portalCrewPreviewGrid');
+      const summaryEl = document.getElementById('portalCrewSummary');
+      if (!grid) return;
+
+      const alertCount = crewData.filter(c => c.status === 'ALERT').length;
+      if (summaryEl) {
+        if (alertCount > 0) {
+          summaryEl.textContent = `${alertCount} ALERT ACTIVE`;
+          summaryEl.className = 'text-sm sm:text-base font-bold text-rose-400 mt-0.5 animate-pulse';
+        } else {
+          summaryEl.textContent = '4/4 NOMINAL';
+          summaryEl.className = 'text-sm sm:text-base font-bold text-emerald-400 mt-0.5';
+        }
+      }
+
+      grid.innerHTML = '';
+      crewData.forEach(member => {
+        const badgeStyles =
+          member.status === 'ALERT'
+            ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse'
+            : member.status === 'ADVISORY'
+            ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+            : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40';
+
+        const card = document.createElement('div');
+        card.onclick = () => {
+          selectedCrewId = member.id;
+          switchFrontendView('dashboard');
+          addLog(`Opened live telemetry console for ${getCrewDisplayName(member)}.`);
+        };
+        card.className = 'bg-space-900/90 hover:bg-space-850 border border-slate-800 hover:border-cyan-400/60 rounded-2xl p-4 transition cursor-pointer flex flex-col justify-between gap-3';
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${member.avatarBg} flex items-center justify-center font-bold text-white text-xs shrink-0">
+                ${isAnonymizedView ? member.anonInitials : member.initials}
+              </div>
+              <div class="min-w-0">
+                <p class="font-semibold text-sm text-white truncate">${getCrewDisplayName(member)}</p>
+                <p class="text-[11px] text-slate-400 truncate">${isAnonymizedView ? member.anonRole : member.role}</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border shrink-0 ${badgeStyles}">${member.status}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 text-xs font-mono">
+            <div>
+              <div class="text-[10px] text-slate-400">HR</div>
+              <div class="text-white font-semibold">${Math.round(member.hr)} <span class="text-[10px] text-slate-500">BPM</span></div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">SpO2</div>
+              <div class="text-emerald-400 font-semibold">${member.spo2.toFixed(1)}%</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">DOSE</div>
+              <div class="text-purple-300 font-semibold">${member.radTotal.toFixed(0)} mSv</div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Render Detailed Crew Medical Readiness Cards
+    function renderCrewReadinessCards() {
+      const grid = document.getElementById('crewReadinessFullGrid');
+      if (!grid) return;
+
+      grid.innerHTML = '';
+      crewData.forEach(member => {
+        const badgeStyles =
+          member.status === 'ALERT'
+            ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
+            : member.status === 'ADVISORY'
+            ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+            : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40';
+
+        const card = document.createElement('div');
+        card.className = 'bg-space-900/90 border border-slate-800 rounded-2xl p-5 space-y-4';
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${member.avatarBg} flex items-center justify-center font-bold text-white text-base shrink-0">
+                ${isAnonymizedView ? member.anonInitials : member.initials}
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white">${getCrewDisplayName(member)}</h3>
+                <p class="text-xs text-slate-400">${isAnonymizedView ? member.anonRole : member.role} • <span class="text-cyan-300 font-mono">${member.activity}</span></p>
+              </div>
+            </div>
+            <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-full border ${badgeStyles}">${member.status}</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+            <div class="bg-space-950 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-[10px] text-slate-400">HEART RATE / BP</div>
+              <div class="text-white font-semibold mt-0.5">${Math.round(member.hr)} BPM • ${Math.round(member.bpSys)}/${Math.round(member.bpDia)}</div>
+            </div>
+            <div class="bg-space-950 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-[10px] text-slate-400">BMD RETENTION</div>
+              <div class="text-cyan-300 font-semibold mt-0.5">${member.boneIndex}% (${member.bmdLoss})</div>
+            </div>
+            <div class="bg-space-950 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-[10px] text-slate-400">SANS IOP / SLEEP</div>
+              <div class="text-indigo-300 font-semibold mt-0.5">${member.iop} mmHg • ${member.sleepHours}h</div>
+            </div>
+            <div class="bg-space-950 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-[10px] text-slate-400">RADIATION DOSE</div>
+              <div class="text-purple-300 font-semibold mt-0.5">${member.radTotal.toFixed(1)} / 600 mSv</div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800/80">
+            <span class="text-xs font-mono text-slate-400">Pending Countermeasures: <strong class="text-white">${member.countermeasures.filter(c => !c.done).length}</strong></span>
+            <button onclick="selectedCrewId='${member.id}'; switchFrontendView('dashboard');" class="px-3.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition cursor-pointer">
+              Inspect Live Telemetry <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Initialize on Window Load
+    window.addEventListener('resize', resizeEcgCanvas);
+    window.onload = function () {
+      resizeEcgCanvas();
+      switchFrontendView('portal');
+      addLog('ASTRA-MED Frontend Mission Portal & Telemetry Console initialized.');
+      addLog('CCSDS 355.0-B-2 SDLS (AES-256-GCM) & ML-KEM-1024 link verified.', 'success');
+      requestAnimationFrame(animateEcg);
+      if (typeof initCloudBackend === 'function') initCloudBackend();
+    };
+  </script>
+  <script src="/js/backend-module.js"></script>
+</body>
+</html>
