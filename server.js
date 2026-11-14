@@ -79,6 +79,31 @@ function route(req, res, url) {
 const server=http.createServer(async (req,res)=>{
   const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
   try {
+    // NASA OSDR study metadata proxy: keeps the browser on the ASTRA-MED backend.
+    if (url.pathname === '/api/nasa/osd-575' && req.method === 'GET') {
+      try {
+        const nasaResponse = await fetch('https://osdr.nasa.gov/osdr/data/osd/meta/575', {
+          headers: { Accept: 'application/json' }
+        });
+        if (!nasaResponse.ok) {
+          return json(res, 502, {
+            error: 'NASA OSDR request failed',
+            upstreamStatus: nasaResponse.status
+          });
+        }
+        const nasaData = await nasaResponse.json();
+        return json(res, 200, {
+          source: 'NASA Open Science Data Repository',
+          studyId: 'OSD-575',
+          retrievedAt: new Date().toISOString(),
+          data: nasaData
+        });
+      } catch (error) {
+        console.error('[ASTRA-MED] NASA OSDR metadata request failed:', error.message);
+        return json(res, 502, { error: 'Unable to retrieve NASA OSDR metadata' });
+      }
+    }
+
     const handled=route(req,res,url); if(handled!==null) return;
     if(req.method!=='GET') return json(res,404,{error:'Not found'});
     let filePath=path.join(PUBLIC_DIR,url.pathname==='/'?'index.html':url.pathname);
