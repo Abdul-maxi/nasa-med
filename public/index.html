@@ -829,6 +829,56 @@
           </ul>
         </div>
       </div>
+
+      <section id="nasaOsdrPanel" class="bg-space-950 border border-cyan-500/30 rounded-2xl p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <h3 class="text-sm font-mono uppercase tracking-wider text-cyan-300 font-semibold">3. Live NASA OSDR Research Data Connection</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Study OSD-575 • Inspiration4 serum research metadata</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="nasaOsdrStatus" class="text-xs font-mono text-amber-300">WAITING FOR CONNECTION...</span>
+            <button id="nasaOsdrRefresh" type="button" class="px-3 py-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-200 text-xs hover:bg-cyan-500/20 disabled:opacity-50">Refresh NASA Data</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+            <div class="text-[10px] font-mono text-slate-400 uppercase">Assay datasets</div>
+            <div id="nasaOsdrAssayCount" class="text-2xl font-semibold text-white mt-1">—</div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+            <div class="text-[10px] font-mono text-slate-400 uppercase">Sample records</div>
+            <div id="nasaOsdrRecordCount" class="text-2xl font-semibold text-white mt-1">—</div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+            <div class="text-[10px] font-mono text-slate-400 uppercase">Unique sample IDs</div>
+            <div id="nasaOsdrSampleCount" class="text-2xl font-semibold text-white mt-1">—</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Assays detected</div>
+            <div id="nasaOsdrAssays" class="flex flex-wrap gap-2"><span class="text-slate-500 text-xs">Loading…</span></div>
+          </div>
+          <div class="space-y-2">
+            <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Sample collection time points</div>
+            <div id="nasaOsdrTimepoints" class="flex flex-wrap gap-2"><span class="text-slate-500 text-xs">Loading…</span></div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-800 pt-3">
+          <p id="nasaOsdrRetrieved" class="text-[10px] font-mono text-slate-500">Awaiting NASA metadata…</p>
+          <a href="https://osdr.nasa.gov/osdr/data/osd/meta/575" target="_blank" rel="noopener noreferrer" class="text-xs text-cyan-300 underline">Open official NASA OSDR study</a>
+        </div>
+        <p class="text-[11px] leading-relaxed text-amber-200/80 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+          Research-data notice: OSD-575 contains historical biological sample and assay metadata. It is not live astronaut telemetry, a real-time vital-sign feed, or a clinically validated diagnostic system. ASTRA-MED's live dashboard values remain simulated.
+        </p>
+      </section>
     </div>
   </section>
 
@@ -2205,5 +2255,6 @@
     };
   </script>
   <script src="/js/backend-module.js"></script>
+  <script src="/js/nasa-osdr.js"></script>
 </body>
 </html>
