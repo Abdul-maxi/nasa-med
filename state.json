@@ -1,0 +1,216 @@
+{
+  "crew": [
+    {
+      "id": "vance",
+      "name": "Cmdr. Elena Vance",
+      "anonId": "SUBJ-ART4-01 [HASH: 7F3A]",
+      "initials": "EV",
+      "anonInitials": "S1",
+      "role": "Mission Commander",
+      "anonRole": "Crew Role: Redacted (RBAC)",
+      "activity": "EVA Spacewalk (Airlock B)",
+      "avatarBg": "from-cyan-500 to-blue-600",
+      "status": "NOMINAL",
+      "hr": 88,
+      "spo2": 98.4,
+      "resp": 17,
+      "temp": 37.1,
+      "hydration": 91,
+      "radTotal": 124.6,
+      "radRate": 0.94,
+      "bpSys": 124,
+      "bpDia": 78,
+      "hrv": 58,
+      "boneIndex": 97.8,
+      "bmdLoss": "-1.4%",
+      "aredQuota": "100% Quota",
+      "sleepHours": 7.5,
+      "iop": 15.1,
+      "cogScore": 97,
+      "suitPressure": 29.6,
+      "co2": 0.31,
+      "suitStatus": "EVA SUIT NOMINAL",
+      "countermeasures": [
+        {
+          "id": "c1",
+          "text": "Verify EMU suit sublimator cooling loop flow (2.1 L/min)",
+          "done": true,
+          "effect": "temp"
+        },
+        {
+          "id": "c2",
+          "text": "Administer 350 mL electrolyte drink via in-suit drink bag",
+          "done": false,
+          "effect": "hydration"
+        },
+        {
+          "id": "c3",
+          "text": "Monitor EVA metabolic workload (< 300 kcal/hr threshold)",
+          "done": true,
+          "effect": "hr"
+        }
+      ]
+    },
+    {
+      "id": "thorne",
+      "name": "Dr. Marcus Thorne",
+      "anonId": "SUBJ-ART4-02 [HASH: 2B9E]",
+      "initials": "MT",
+      "anonInitials": "S2",
+      "role": "Flight Surgeon / Payload",
+      "anonRole": "Crew Role: Redacted (RBAC)",
+      "activity": "Microgravity Exercise (ARED)",
+      "avatarBg": "from-emerald-500 to-teal-600",
+      "status": "ADVISORY",
+      "hr": 118,
+      "spo2": 97.6,
+      "resp": 22,
+      "temp": 37.5,
+      "hydration": 84,
+      "radTotal": 116.2,
+      "radRate": 0.78,
+      "bpSys": 136,
+      "bpDia": 82,
+      "hrv": 44,
+      "boneIndex": 98.5,
+      "bmdLoss": "-0.9%",
+      "aredQuota": "115% Quota",
+      "sleepHours": 7.2,
+      "iop": 15.8,
+      "cogScore": 95,
+      "suitPressure": 101.3,
+      "co2": 0.29,
+      "suitStatus": "HABITAT NODE 2",
+      "countermeasures": [
+        {
+          "id": "t1",
+          "text": "Complete post-ARED 500 mL sodium-potassium rehydration bolus",
+          "done": false,
+          "effect": "hydration"
+        },
+        {
+          "id": "t2",
+          "text": "Initiate 5-minute parasympathetic recovery breathing protocol",
+          "done": false,
+          "effect": "hr"
+        },
+        {
+          "id": "t3",
+          "text": "Log lumbar & femoral resistive load telemetry to NASA HRP",
+          "done": true,
+          "effect": "bone"
+        }
+      ]
+    },
+    {
+      "id": "sato",
+      "name": "Eng. Kenji Sato",
+      "anonId": "SUBJ-ART4-03 [HASH: 9D1C]",
+      "initials": "KS",
+      "anonInitials": "S3",
+      "role": "Flight Systems Engineer",
+      "anonRole": "Crew Role: Redacted (RBAC)",
+      "activity": "ECLSS & Avionics Inspection",
+      "avatarBg": "from-amber-500 to-orange-600",
+      "status": "NOMINAL",
+      "hr": 68,
+      "spo2": 99.1,
+      "resp": 13,
+      "temp": 36.8,
+      "hydration": 94,
+      "radTotal": 121,
+      "radRate": 0.81,
+      "bpSys": 116,
+      "bpDia": 74,
+      "hrv": 71,
+      "boneIndex": 96.9,
+      "bmdLoss": "-2.1%",
+      "aredQuota": "95% Quota",
+      "sleepHours": 7.8,
+      "iop": 14.9,
+      "cogScore": 98,
+      "suitPressure": 101.3,
+      "co2": 0.26,
+      "suitStatus": "HABITAT CORE",
+      "countermeasures": [
+        {
+          "id": "s1",
+          "text": "Schedule 45-min ARED squat/deadlift session at 16:00 MET",
+          "done": false,
+          "effect": "bone"
+        },
+        {
+          "id": "s2",
+          "text": "Daily Vitamin D3 (800 IU) & calcium citrate supplement",
+          "done": true,
+          "effect": "bone"
+        },
+        {
+          "id": "s3",
+          "text": "Calibrate personal dosimeter badge against TEPC sensor",
+          "done": true,
+          "effect": "rad"
+        }
+      ]
+    },
+    {
+      "id": "lin",
+      "name": "Spec. Maya Lin",
+      "anonId": "SUBJ-ART4-04 [HASH: 4E8B]",
+      "initials": "ML",
+      "anonInitials": "S4",
+      "role": "Astrobiology Specialist",
+      "anonRole": "Crew Role: Redacted (RBAC)",
+      "activity": "Circadian Sleep Cycle (Crew Qtrs)",
+      "avatarBg": "from-indigo-500 to-purple-600",
+      "status": "NOMINAL",
+      "hr": 56,
+      "spo2": 98.9,
+      "resp": 12,
+      "temp": 36.5,
+      "hydration": 93,
+      "radTotal": 112.8,
+      "radRate": 0.76,
+      "bpSys": 110,
+      "bpDia": 68,
+      "hrv": 82,
+      "boneIndex": 97.5,
+      "bmdLoss": "-1.5%",
+      "aredQuota": "100% Quota",
+      "sleepHours": 8.1,
+      "iop": 16.4,
+      "cogScore": 96,
+      "suitPressure": 101.3,
+      "co2": 0.25,
+      "suitStatus": "SLEEP BAY 1",
+      "countermeasures": [
+        {
+          "id": "l1",
+          "text": "Maintain blue-depleted 450nm circadian lighting in sleep bay",
+          "done": true,
+          "effect": "sleep"
+        },
+        {
+          "id": "l2",
+          "text": "Perform Optical Coherence Tomography (OCT) SANS scan on wake",
+          "done": false,
+          "effect": "sleep"
+        },
+        {
+          "id": "l3",
+          "text": "Lower-body negative pressure (LBNP) fluid shift session",
+          "done": false,
+          "effect": "hr"
+        }
+      ]
+    }
+  ],
+  "mission": {
+    "activeAnomaly": null,
+    "sessionKeyId": "SDLS-K256-09F4A",
+    "isAnonymizedView": false,
+    "selectedCrewId": "vance",
+    "recentLogs": [],
+    "updatedAt": "2026-11-14T13:50:26.431Z"
+  }
+}

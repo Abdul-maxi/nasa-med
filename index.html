@@ -1,0 +1,586 @@
+<!-- ... existing code ... -->
+          <button id="nav-mission-brief" onclick="switchFrontendView('mission-brief')" class="frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-space-850/80 text-slate-400 hover:text-slate-200 border border-slate-800">
+            <i class="fa-solid fa-rocket"></i>
+            <span>2026 Space Apps &amp; Security</span>
+          </button>
+          <button id="nav-backend" onclick="switchFrontendView('backend')" class="frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-space-850/80 text-slate-400 hover:text-slate-200 border border-slate-800">
+            <i class="fa-solid fa-server"></i>
+            <span>Backend &amp; Cloud Sync</span>
+          </button>
+        </div>
+
+        <div class="hidden md:flex items-center gap-3 text-[11px] font-mono text-slate-400 shrink-0">
+          <span id="cloudSyncHeaderBadge" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span id="cloudSyncHeaderText">CLOUD SYNC: INITIALIZING</span>
+          </span>
+          <div>
+            <span>ACTIVE CREW:</span>
+            <span id="navActiveCrewLabel" class="text-cyan-300 font-semibold">Cmdr. Elena Vance</span>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
+<!-- ... existing code ... -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- APPLICATION LOGIC + REAL-TIME CLOUD BACKEND -->
+  <!-- ======================================================================= -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, onSnapshot, collection } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+    // =========================================================================
+    // 1. ASTRONAUT CREW DATASET & BASELINE TELEMETRY
+    // =========================================================================
+    const initialCrewBaseline = [
+      {
+        id: 'vance',
+        name: 'Cmdr. Elena Vance',
+        anonId: 'SUBJ-ART4-01 [HASH: 7F3A]',
+        initials: 'EV',
+        anonInitials: 'S1',
+        role: 'Mission Commander',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'EVA Spacewalk (Airlock B)',
+        avatarBg: 'from-cyan-500 to-blue-600',
+        status: 'NOMINAL',
+        hr: 88,
+        spo2: 98.4,
+        resp: 17,
+        temp: 37.1,
+        hydration: 91,
+        radTotal: 124.6,
+        radRate: 0.94,
+        bpSys: 124,
+        bpDia: 78,
+        hrv: 58,
+        boneIndex: 97.8,
+        bmdLoss: '-1.4%',
+        aredQuota: '100% Quota',
+        sleepHours: 7.5,
+        iop: 15.1,
+        cogScore: 97,
+        suitPressure: 29.6, // Low-pressure EVA suit kPa
+        co2: 0.31,
+        suitStatus: 'EVA SUIT NOMINAL',
+        countermeasures: [
+          { id: 'c1', text: 'Verify EMU suit sublimator cooling loop flow (2.1 L/min)', done: true, effect: 'temp' },
+          { id: 'c2', text: 'Administer 350 mL electrolyte drink via in-suit drink bag', done: false, effect: 'hydration' },
+          { id: 'c3', text: 'Monitor EVA metabolic workload (< 300 kcal/hr threshold)', done: true, effect: 'hr' }
+        ]
+      },
+      {
+        id: 'thorne',
+        name: 'Dr. Marcus Thorne',
+        anonId: 'SUBJ-ART4-02 [HASH: 2B9E]',
+        initials: 'MT',
+        anonInitials: 'S2',
+        role: 'Flight Surgeon / Payload',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'Microgravity Exercise (ARED)',
+        avatarBg: 'from-emerald-500 to-teal-600',
+        status: 'ADVISORY',
+        hr: 118,
+        spo2: 97.6,
+        resp: 22,
+        temp: 37.5,
+        hydration: 84,
+        radTotal: 116.2,
+        radRate: 0.78,
+        bpSys: 136,
+        bpDia: 82,
+        hrv: 44,
+        boneIndex: 98.5,
+        bmdLoss: '-0.9%',
+        aredQuota: '115% Quota',
+        sleepHours: 7.2,
+        iop: 15.8,
+        cogScore: 95,
+        suitPressure: 101.3,
+        co2: 0.29,
+        suitStatus: 'HABITAT NODE 2',
+        countermeasures: [
+          { id: 't1', text: 'Complete post-ARED 500 mL sodium-potassium rehydration bolus', done: false, effect: 'hydration' },
+          { id: 't2', text: 'Initiate 5-minute parasympathetic recovery breathing protocol', done: false, effect: 'hr' },
+          { id: 't3', text: 'Log lumbar & femoral resistive load telemetry to NASA HRP', done: true, effect: 'bone' }
+        ]
+      },
+      {
+        id: 'sato',
+        name: 'Eng. Kenji Sato',
+        anonId: 'SUBJ-ART4-03 [HASH: 9D1C]',
+        initials: 'KS',
+        anonInitials: 'S3',
+        role: 'Flight Systems Engineer',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'ECLSS & Avionics Inspection',
+        avatarBg: 'from-amber-500 to-orange-600',
+        status: 'NOMINAL',
+        hr: 68,
+        spo2: 99.1,
+        resp: 13,
+        temp: 36.8,
+        hydration: 94,
+        radTotal: 121.0,
+        radRate: 0.81,
+        bpSys: 116,
+        bpDia: 74,
+        hrv: 71,
+        boneIndex: 96.9,
+        bmdLoss: '-2.1%',
+        aredQuota: '95% Quota',
+        sleepHours: 7.8,
+        iop: 14.9,
+        cogScore: 98,
+        suitPressure: 101.3,
+        co2: 0.26,
+        suitStatus: 'HABITAT CORE',
+        countermeasures: [
+          { id: 's1', text: 'Schedule 45-min ARED squat/deadlift session at 16:00 MET', done: false, effect: 'bone' },
+          { id: 's2', text: 'Daily Vitamin D3 (800 IU) & calcium citrate supplement', done: true, effect: 'bone' },
+          { id: 's3', text: 'Calibrate personal dosimeter badge against TEPC sensor', done: true, effect: 'rad' }
+        ]
+      },
+      {
+        id: 'lin',
+        name: 'Spec. Maya Lin',
+        anonId: 'SUBJ-ART4-04 [HASH: 4E8B]',
+        initials: 'ML',
+        anonInitials: 'S4',
+        role: 'Astrobiology Specialist',
+        anonRole: 'Crew Role: Redacted (RBAC)',
+        activity: 'Circadian Sleep Cycle (Crew Qtrs)',
+        avatarBg: 'from-indigo-500 to-purple-600',
+        status: 'NOMINAL',
+        hr: 56,
+        spo2: 98.9,
+        resp: 12,
+        temp: 36.5,
+        hydration: 93,
+        radTotal: 112.8,
+        radRate: 0.76,
+        bpSys: 110,
+        bpDia: 68,
+        hrv: 82,
+        boneIndex: 97.5,
+        bmdLoss: '-1.5%',
+        aredQuota: '100% Quota',
+        sleepHours: 8.1,
+        iop: 16.4,
+        cogScore: 96,
+        suitPressure: 101.3,
+        co2: 0.25,
+        suitStatus: 'SLEEP BAY 1',
+        countermeasures: [
+          { id: 'l1', text: 'Maintain blue-depleted 450nm circadian lighting in sleep bay', done: true, effect: 'sleep' },
+          { id: 'l2', text: 'Perform Optical Coherence Tomography (OCT) SANS scan on wake', done: false, effect: 'sleep' },
+          { id: 'l3', text: 'Lower-body negative pressure (LBNP) fluid shift session', done: false, effect: 'hr' }
+        ]
+      }
+    ];
+
+    let crewData = JSON.parse(JSON.stringify(initialCrewBaseline));
+
+    // =========================================================================
+    // CLOUD BACKEND INITIALIZATION (FIREBASE AUTH & FIRESTORE)
+    // =========================================================================
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let isBackendConnected = false;
+    let lastCloudSnapshotTime = 0;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    async function initCloudBackend() {
+      try {
+        if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+          updateBackendStatusUI('LOCAL SIMULATION MODE', false);
+          return;
+        }
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        onAuthStateChanged(auth, (user) => {
+          currentUser = user;
+          if (user) {
+            isBackendConnected = true;
+            const uidEl = document.getElementById('backendOperatorUid');
+            if (uidEl) uidEl.textContent = user.uid;
+            updateBackendStatusUI('CLOUD SYNC: LIVE', true);
+            subscribeToTelemetryBackend();
+            subscribeToMissionControlBackend();
+          }
+        });
+      } catch (err) {
+        updateBackendStatusUI('EDGE CACHE MODE', false);
+      }
+    }
+
+    function updateBackendStatusUI(text, connected) {
+      const headerText = document.getElementById('cloudSyncHeaderText');
+      const pill = document.getElementById('backendStatusPill');
+      if (headerText) headerText.textContent = text;
+      if (pill) {
+        pill.textContent = connected ? 'ONLINE • REAL-TIME SYNC' : 'EDGE BUFFER • LOCAL MODE';
+      }
+    }
+
+    function subscribeToTelemetryBackend() {
+      if (!currentUser || !db) return;
+      const crewCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'astronaut_telemetry');
+
+      onSnapshot(
+        crewCollectionRef,
+        (snapshot) => {
+          if (snapshot.empty) {
+            pushFullStateToBackend(false);
+            return;
+          }
+          snapshot.forEach((docSnap) => {
+            const remoteData = docSnap.data();
+            const idx = crewData.findIndex((c) => c.id === docSnap.id);
+            if (idx !== -1 && remoteData) {
+              crewData[idx] = { ...crewData[idx], ...remoteData };
+            }
+          });
+          const docCountEl = document.getElementById('backendDocCount');
+          if (docCountEl) docCountEl.textContent = `${snapshot.size} / ${crewData.length} SYNCED`;
+          renderAll();
+        },
+        () => {
+          updateBackendStatusUI('SYNC RETRYING', false);
+        }
+      );
+    }
+
+    // Subscribe to shared mission control state (anomalies, encryption epoch, logs, privacy mode)
+    function subscribeToMissionControlBackend() {
+      if (!currentUser || !db) return;
+      const missionStateRef = doc(db, 'artifacts', appId, 'public', 'data', 'mission_control', 'global_state');
+
+      onSnapshot(
+        missionStateRef,
+        (docSnap) => {
+          if (!docSnap.exists()) {
+            syncMissionControlToBackend();
+            return;
+          }
+          const state = docSnap.data();
+          if (!state) return;
+
+          // Sync Active Anomaly Banner across clients
+          const banner = document.getElementById('anomalyBanner');
+          if (state.activeAnomaly && banner) {
+            activeAnomaly = state.activeAnomaly;
+            const titleEl = document.getElementById('anomalyTitle');
+            const descEl = document.getElementById('anomalyDesc');
+            if (titleEl) titleEl.textContent = state.activeAnomaly.bannerTitle || state.activeAnomaly.title;
+            if (descEl) descEl.textContent = state.activeAnomaly.desc || '';
+            banner.classList.remove('hidden');
+          } else if (!state.activeAnomaly && banner) {
+            activeAnomaly = null;
+            banner.classList.add('hidden');
+          }
+
+          // Sync Cryptographic Session Key Epoch
+          if (state.sessionKeyId && typeof sessionKeyId !== 'undefined' && state.sessionKeyId !== sessionKeyId) {
+            sessionKeyId = state.sessionKeyId;
+            const keyWidgetEl = document.getElementById('widgetSessionKey');
+            const keyModalEl = document.getElementById('modalSessionKey');
+            if (keyWidgetEl) keyWidgetEl.textContent = sessionKeyId;
+            if (keyModalEl) keyModalEl.textContent = sessionKeyId;
+          }
+
+          // Sync RBAC Anonymization Mode across consoles
+          if (typeof state.isAnonymizedView === 'boolean' && typeof isAnonymizedView !== 'undefined' && state.isAnonymizedView !== isAnonymizedView) {
+            isAnonymizedView = state.isAnonymizedView;
+            updatePrivacyToggleUI();
+          }
+
+          // Sync Flight Surgeon Console Logs
+          if (Array.isArray(state.recentLogs)) {
+            renderSyncedLogs(state.recentLogs);
+          }
+
+          renderAll();
+        },
+        () => {
+          // Keep local mission control state active on transient error
+        }
+      );
+    }
+
+    async function syncMissionControlToBackend(extraLogEntry = null) {
+      if (!currentUser || !db) return;
+      try {
+        const missionStateRef = doc(db, 'artifacts', appId, 'public', 'data', 'mission_control', 'global_state');
+        const payload = {
+          activeAnomaly: activeAnomaly || null,
+          sessionKeyId: typeof sessionKeyId !== 'undefined' ? sessionKeyId : 'SDLS-K256-09F4A',
+          isAnonymizedView: typeof isAnonymizedView !== 'undefined' ? isAnonymizedView : false,
+          selectedCrewId: selectedCrewId,
+          updatedBy: currentUser.uid,
+          updatedAt: new Date().toISOString()
+        };
+        if (extraLogEntry) {
+          window._syncedLogsCache = [extraLogEntry, ...(window._syncedLogsCache || [])].slice(0, 18);
+          payload.recentLogs = window._syncedLogsCache;
+        } else if (window._syncedLogsCache) {
+          payload.recentLogs = window._syncedLogsCache;
+        }
+        await setDoc(missionStateRef, payload, { merge: true });
+      } catch (e) {
+        // Fallback gracefully to local state
+      }
+    }
+
+    function renderSyncedLogs(logs) {
+      const consoleEl = document.getElementById('surgeonLogConsole');
+      if (!consoleEl || !Array.isArray(logs) || logs.length === 0) return;
+      window._syncedLogsCache = logs;
+      consoleEl.innerHTML = '';
+      logs.forEach((entry) => {
+        const div = document.createElement('div');
+        div.className = `flex items-start gap-2 leading-relaxed ${entry.colorClass || 'text-slate-300'}`;
+        div.innerHTML = `<span class="text-slate-500 shrink-0">[${entry.timestamp}]</span><span>${entry.message}</span>`;
+        consoleEl.appendChild(div);
+      });
+    }
+
+    async function syncCrewMemberToBackend(member) {
+      if (!currentUser || !db || !member) return;
+      try {
+        const memberDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'astronaut_telemetry', member.id);
+        await setDoc(memberDocRef, {
+          ...member,
+          updatedBy: currentUser.uid,
+          updatedAt: new Date().toISOString()
+        });
+        const lastSyncEl = document.getElementById('backendLastSync');
+        if (lastSyncEl) {
+          lastSyncEl.textContent = new Date().toISOString().substring(11, 19) + ' UTC';
+        }
+      } catch (e) {
+        // Retain local edge state gracefully if network is unavailable
+      }
+    }
+
+    async function pushFullStateToBackend(notify = false) {
+      for (const member of crewData) {
+        await syncCrewMemberToBackend(member);
+      }
+      await syncMissionControlToBackend();
+      if (notify) {
+        addLog('BACKEND SYNC: Pushed full Artemis-IV crew telemetry & mission state to cloud store.', 'success');
+      }
+      updateBackendJsonPreview();
+    }
+
+    async function resetBackendDatabase() {
+      crewData = JSON.parse(JSON.stringify(initialCrewBaseline));
+      activeAnomaly = null;
+      const banner = document.getElementById('anomalyBanner');
+      if (banner) banner.classList.add('hidden');
+      await pushFullStateToBackend(false);
+      addLog('BACKEND RESET: Restored all 4 crewmembers & global state to nominal baseline.', 'warn');
+      renderAll();
+    }
+
+    function updateBackendJsonPreview() {
+      const previewEl = document.getElementById('backendJsonPreview');
+      if (!previewEl) return;
+      const c = getCurrentCrew();
+      if (!c) return;
+      const payload = {
+        endpoint: `/artifacts/${appId}/public/data/astronaut_telemetry/${c.id}`,
+        encryption: 'CCSDS-SDLS-AES-256-GCM',
+        subject: isAnonymizedView ? c.anonId : c.name,
+        status: c.status,
+        vitals: {
+          heartRateBpm: Math.round(c.hr),
+          spO2Pct: c.spo2,
+          respirationBrpm: Math.round(c.resp),
+          coreTempC: c.temp,
+          hydrationPct: Math.round(c.hydration),
+          radiationTotalMsv: c.radTotal
+        },
+        countermeasures: c.countermeasures
+      };
+      previewEl.textContent = JSON.stringify(payload, null, 2);
+    }
+
+    // Global State
+    let currentFrontendView = 'portal';
+    let selectedCrewId = 'vance';
+    let selectedBodyNode = 'cardio';
+    let isStreaming = true;
+    let activeAnomaly = null;
+    let missionSeconds = 142 * 86400 + 18 * 3600 + 42 * 60 + 10;
+    let anomalyScenarioIndex = 0;
+
+    // Frontend Multi-View Switcher
+    function switchFrontendView(viewName) {
+      currentFrontendView = viewName;
+      const views = ['portal', 'dashboard', 'crew-profiles', 'mission-brief', 'backend'];
+
+      views.forEach(v => {
+        const section = document.getElementById(`view-${v}`);
+        const navBtn = document.getElementById(`nav-${v}`);
+        if (section) {
+          if (v === viewName) {
+            section.classList.remove('hidden');
+          } else {
+            section.classList.add('hidden');
+          }
+        }
+        if (navBtn) {
+          if (v === viewName) {
+            navBtn.className = 'frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-cyan-500/15 text-cyan-300 border border-cyan-400/50';
+          } else {
+            navBtn.className = 'frontend-nav-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap bg-space-850/80 text-slate-400 hover:text-slate-200 border border-slate-800';
+          }
+        }
+      });
+
+      if (viewName === 'dashboard') {
+        setTimeout(() => resizeEcgCanvas(), 20);
+      }
+      renderAll();
+    }
+<!-- ... existing code ... -->
+        const checkbox = row.querySelector('input');
+        checkbox.addEventListener('change', () => {
+          item.done = checkbox.checked;
+          if (item.done) {
+            applyCountermeasureEffect(c, item);
+            addLog(`Executed protocol for ${getCrewDisplayName(c)}: "${item.text.slice(0, 48)}..."`, 'success');
+          }
+          syncCrewMemberToBackend(c);
+          renderAll();
+        });
+
+        list.appendChild(row);
+      });
+    }
+<!-- ... existing code ... -->
+      const banner = document.getElementById('anomalyBanner');
+      const bannerTitle = `${scenario.title} — [${getCrewDisplayName(crew).toUpperCase()}]`;
+      activeAnomaly = {
+        ...scenario,
+        crewId: crew.id,
+        bannerTitle
+      };
+      document.getElementById('anomalyTitle').textContent = bannerTitle;
+      document.getElementById('anomalyDesc').textContent = scenario.desc;
+      banner.classList.remove('hidden');
+
+      addLog(`ANOMALY INJECTED (${getCrewDisplayName(crew)}): ${scenario.title}`, 'alert');
+      syncCrewMemberToBackend(crew);
+      syncMissionControlToBackend();
+      renderAll();
+    }
+
+    function resolveAllAnomalies() {
+      const crew = getCurrentCrew();
+      crew.status = 'NOMINAL';
+      crew.hr = 76;
+      crew.spo2 = 98.7;
+      crew.resp = 15;
+      crew.temp = 36.9;
+      crew.hydration = 93;
+      crew.radRate = 0.82;
+      crew.bpSys = 118;
+      crew.bpDia = 76;
+      crew.suitPressure = crew.id === 'vance' ? 29.6 : 101.3;
+      crew.suitStatus = crew.id === 'vance' ? 'EVA SUIT NOMINAL' : 'HABITAT NOMINAL';
+      crew.countermeasures.forEach(m => (m.done = true));
+
+      activeAnomaly = null;
+      document.getElementById('anomalyBanner').classList.add('hidden');
+      addLog(`Flight Surgeon manual override: ${getCrewDisplayName(crew)} telemetry restored to baseline.`, 'success');
+      syncCrewMemberToBackend(crew);
+      syncMissionControlToBackend();
+      renderAll();
+    }
+
+    function resolveAllAnomalies() {
+      const crew = getCurrentCrew();
+      crew.status = 'NOMINAL';
+      crew.hr = 76;
+      crew.spo2 = 98.7;
+      crew.resp = 15;
+      crew.temp = 36.9;
+      crew.hydration = 93;
+      crew.radRate = 0.82;
+      crew.bpSys = 118;
+      crew.bpDia = 76;
+      crew.suitPressure = crew.id === 'vance' ? 29.6 : 101.3;
+      crew.suitStatus = crew.id === 'vance' ? 'EVA SUIT NOMINAL' : 'HABITAT NOMINAL';
+      crew.countermeasures.forEach(m => (m.done = true));
+
+      activeAnomaly = null;
+      document.getElementById('anomalyBanner').classList.add('hidden');
+      addLog(`Flight Surgeon manual override: ${getCrewDisplayName(crew)} telemetry restored to baseline.`, 'success');
+      syncCrewMemberToBackend(crew);
+      renderAll();
+    }
+<!-- ... existing code ... -->
+    function renderAll() {
+      const activeCrew = getCurrentCrew();
+      const navCrewLabel = document.getElementById('navActiveCrewLabel');
+      if (navCrewLabel && activeCrew) {
+        navCrewLabel.textContent = getCrewDisplayName(activeCrew);
+      }
+
+      renderPortalCrewPreviews();
+      renderCrewReadinessCards();
+      renderCrewSelector();
+      renderTelemetryCards();
+      renderBodyNodeDetails();
+      renderCountermeasures();
+      updateBackendJsonPreview();
+    }
+
+    // =========================================================================
+    // EXPOSE FUNCTIONS TO GLOBAL WINDOW SCOPE FOR INLINE HANDLERS
+    // =========================================================================
+    window.switchFrontendView = switchFrontendView;
+    window.toggleSecurityModal = toggleSecurityModal;
+    window.toggleProjectModal = toggleProjectModal;
+    window.toggleStream = toggleStream;
+    window.triggerAnomaly = triggerAnomaly;
+    window.resolveAllAnomalies = resolveAllAnomalies;
+    window.selectBodyNode = selectBodyNode;
+    window.togglePrivacyMode = togglePrivacyMode;
+    window.setPrivacyMode = setPrivacyMode;
+    window.rotateSessionKey = rotateSessionKey;
+    window.pushFullStateToBackend = pushFullStateToBackend;
+    window.resetBackendDatabase = resetBackendDatabase;
+
+    // Initialize on Window Load
+    window.addEventListener('resize', resizeEcgCanvas);
+    window.onload = function () {
+      resizeEcgCanvas();
+      switchFrontendView('portal');
+      initCloudBackend();
+      addLog('ASTRA-MED Frontend Mission Portal & Telemetry Console initialized.');
+      addLog('CCSDS 355.0-B-2 SDLS (AES-256-GCM) & ML-KEM-1024 link verified.', 'success');
+      requestAnimationFrame(animateEcg);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "astramed-telemetry-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ASTRA-MED astronaut health telemetry backend for the NASA Space Apps frontend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
