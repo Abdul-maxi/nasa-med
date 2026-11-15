@@ -39,6 +39,7 @@ function initialState() {
   return { crew: clone(baseline), mission: { activeAnomaly:null, sessionKeyId:'SDLS-K256-09F4A', isAnonymizedView:false, selectedCrewId:'vance', recentLogs:[], updatedAt:new Date().toISOString() } };
 }
 function loadState() {
+  if (process.env.VERCEL) return initialState();
   fs.mkdirSync(DATA_DIR, {recursive:true});
   if (!fs.existsSync(DB_FILE)) { const s=initialState(); fs.writeFileSync(DB_FILE, JSON.stringify(s,null,2)); return s; }
   try { return JSON.parse(fs.readFileSync(DB_FILE,'utf8')); } catch { const s=initialState(); fs.writeFileSync(DB_FILE, JSON.stringify(s,null,2)); return s; }
@@ -46,7 +47,10 @@ function loadState() {
 let state = loadState();
 const clients = new Set();
 
-function saveState() { fs.writeFileSync(DB_FILE, JSON.stringify(state,null,2)); }
+function saveState() {
+  if (process.env.VERCEL) return;
+  fs.writeFileSync(DB_FILE, JSON.stringify(state,null,2));
+}
 function json(res, status, body) { const data=JSON.stringify(body); res.writeHead(status, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'}); res.end(data); }
 function noContent(res) { res.writeHead(204, {'Access-Control-Allow-Origin':'*'}); res.end(); }
 function parseBody(req) { return new Promise((resolve,reject)=>{ let b=''; req.on('data',c=>{b+=c;if(b.length>2e6) reject(new Error('Payload too large'));}); req.on('end',()=>{ if(!b)return resolve({}); try{resolve(JSON.parse(b));}catch(e){reject(e);} }); req.on('error',reject); }); }
